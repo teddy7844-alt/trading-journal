@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading System Flowcharts</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #1a1d25;
+    --border: #2a2d38;
+
+    /* System 1 - Inside Bar */
+    --ib-primary: #00d4ff;
+    --ib-secondary: #0066ff;
+    --ib-glow: rgba(0, 212, 255, 0.15);
+    --ib-entry: #00ff88;
+    --ib-stop: #ff4466;
+    --ib-target: #ffcc00;
+
+    /* System 2 - Fib */
+    --fib-primary: #b44fff;
+    --fib-secondary: #7700cc;
+    --fib-glow: rgba(180, 79, 255, 0.15);
+    --fib-entry: #00ff88;
+    --fib-zone: #44ff99;
+    --fib-stop: #ff4466;
+    --fib-t1: #ffaa00;
+    --fib-t2: #ff6600;
+
+    /* System 3 - Weekly Stock IB */
+    --wib-primary: #00ffcc;
+    --wib-secondary: #00aa88;
+    --wib-glow: rgba(0, 255, 204, 0.15);
+  }
+
+  body {
+    background: var(--bg);
+    color: #e0e4f0;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+  }
+
+  .page-header {
+    text-align: center;
+    margin-bottom: 60px;
+  }
+
+  .page-header h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #00d4ff, #b44fff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .page-header p {
+    font-family: 'Share Tech Mono', monospace;
+    color: #556;
+    font-size: 0.85rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .systems-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 40px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 1200px) {
+    .systems-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 900px) {
+    .systems-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ---- SYSTEM CONTAINER ---- */
+  .system {
+    background: var(--surface);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .system-header {
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .sys1 .system-header { background: linear-gradient(135deg, #001a2e, #002444); border-bottom: 2px solid var(--ib-primary); }
+  .sys2 .system-header { background: linear-gradient(135deg, #1a0030, #260044); border-bottom: 2px solid var(--fib-primary); }
+  .sys3 .system-header { background: linear-gradient(135deg, #001a14, #002a1e); border-bottom: 2px solid var(--wib-primary); }
+
+  .system-icon {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+  .sys1 .system-icon { background: rgba(0, 212, 255, 0.15); border: 1px solid var(--ib-primary); }
+  .sys2 .system-icon { background: rgba(180, 79, 255, 0.15); border: 1px solid var(--fib-primary); }
+  .sys3 .system-icon { background: rgba(0, 255, 204, 0.15); border: 1px solid var(--wib-primary); }
+
+  .system-header-text h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .sys1 .system-header-text h2 { color: var(--ib-primary); }
+  .sys2 .system-header-text h2 { color: var(--fib-primary); }
+  .sys3 .system-header-text h2 { color: var(--wib-primary); }
+
+  .system-header-text p {
+    font-size: 0.78rem;
+    color: #667;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .flow-body {
+    padding: 24px 20px;
+  }
+
+  /* ---- FLOW NODES ---- */
+  .node {
+    border-radius: 4px;
+    padding: 14px 16px;
+    margin-bottom: 4px;
+    position: relative;
+  }
+
+  .node-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    opacity: 0.6;
+  }
+
+  .node-text {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .node-sub {
+    font-size: 0.8rem;
+    margin-top: 4px;
+    opacity: 0.7;
+    font-family: 'Share Tech Mono', monospace;
+    line-height: 1.4;
+  }
+
+  /* Node types */
+  .node-start {
+    background: var(--surface2);
+    border: 1px solid #334;
+    border-left: 3px solid #556;
+  }
+
+  .node-question {
+    background: var(--surface2);
+    border: 1px dashed #334;
+    border-radius: 0;
+  }
+
+  .node-action {
+    background: var(--surface2);
+    border: 1px solid #223;
+    border-left: 3px solid #2255aa;
+  }
+
+  .node-entry {
+    border-left: 3px solid var(--ib-entry);
+    background: rgba(0, 255, 136, 0.05);
+    border-top: 1px solid rgba(0,255,136,0.2);
+    border-right: 1px solid rgba(0,255,136,0.1);
+    border-bottom: 1px solid rgba(0,255,136,0.1);
+  }
+  .node-entry .node-label { color: var(--ib-entry); opacity: 0.8; }
+  .node-entry .node-text { color: #ccffe8; }
+
+  .node-stop {
+    border-left: 3px solid var(--ib-stop);
+    background: rgba(255, 68, 102, 0.05);
+    border-top: 1px solid rgba(255,68,102,0.2);
+    border-right: 1px solid rgba(255,68,102,0.1);
+    border-bottom: 1px solid rgba(255,68,102,0.1);
+  }
+  .node-stop .node-label { color: var(--ib-stop); opacity: 0.8; }
+  .node-stop .node-text { color: #ffccd4; }
+
+  .node-target {
+    border-left: 3px solid var(--ib-target);
+    background: rgba(255, 204, 0, 0.05);
+    border-top: 1px solid rgba(255,204,0,0.2);
+    border-right: 1px solid rgba(255,204,0,0.1);
+    border-bottom: 1px solid rgba(255,204,0,0.1);
+  }
+  .node-target .node-label { color: var(--ib-target); opacity: 0.8; }
+  .node-target .node-text { color: #fff5cc; }
+
+  .node-invalidate {
+    border-left: 3px solid #ff6600;
+    background: rgba(255, 102, 0, 0.05);
+    border-top: 1px solid rgba(255,102,0,0.15);
+    border-right: 1px solid rgba(255,102,0,0.1);
+    border-bottom: 1px solid rgba(255,102,0,0.1);
+  }
+  .node-invalidate .node-label { color: #ff9944; opacity: 0.8; }
+  .node-invalidate .node-text { color: #ffd5aa; }
+
+  .node-zone {
+    border-left: 3px solid var(--fib-zone);
+    background: rgba(68, 255, 153, 0.05);
+    border-top: 1px solid rgba(68,255,153,0.2);
+    border-right: 1px solid rgba(68,255,153,0.1);
+    border-bottom: 1px solid rgba(68,255,153,0.1);
+  }
+  .node-zone .node-label { color: var(--fib-zone); opacity: 0.8; }
+  .node-zone .node-text { color: #ccffe8; }
+
+  .node-fib-target1 {
+    border-left: 3px solid var(--fib-t1);
+    background: rgba(255, 170, 0, 0.05);
+    border-top: 1px solid rgba(255,170,0,0.2);
+    border-right: 1px solid rgba(255,170,0,0.1);
+    border-bottom: 1px solid rgba(255,170,0,0.1);
+  }
+  .node-fib-target1 .node-label { color: var(--fib-t1); opacity: 0.8; }
+  .node-fib-target1 .node-text { color: #ffe5aa; }
+
+  .node-fib-target2 {
+    border-left: 3px solid var(--fib-t2);
+    background: rgba(255, 102, 0, 0.05);
+    border-top: 1px solid rgba(255,102,0,0.2);
+    border-right: 1px solid rgba(255,102,0,0.1);
+    border-bottom: 1px solid rgba(255,102,0,0.1);
+  }
+  .node-fib-target2 .node-label { color: var(--fib-t2); opacity: 0.8; }
+  .node-fib-target2 .node-text { color: #ffd5aa; }
+
+  /* ---- CONNECTORS ---- */
+  .connector {
+    display: flex;
+    align-items: center;
+    margin: 2px 0 2px 20px;
+    gap: 8px;
+    min-height: 20px;
+  }
+
+  .connector-line {
+    width: 2px;
+    height: 20px;
+    background: #2a2d38;
+    flex-shrink: 0;
+  }
+
+  .connector-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .connector-yes .connector-label { background: rgba(0,255,136,0.1); color: #00ff88; border: 1px solid rgba(0,255,136,0.3); }
+  .connector-no .connector-label { background: rgba(255,68,102,0.1); color: #ff4466; border: 1px solid rgba(255,68,102,0.3); }
+  .connector-then .connector-label { background: rgba(100,100,200,0.1); color: #8899ff; border: 1px solid rgba(100,100,200,0.3); }
+  .connector-arrow .connector-label { background: transparent; color: #445; border: none; }
+
+  /* ---- BRANCH ---- */
+  .branch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 4px 0;
+  }
+
+  .branch-item {
+    border-radius: 4px;
+    padding: 10px 12px;
+    border: 1px solid #222;
+  }
+
+  .branch-yes { border-top: 2px solid #00ff88; background: rgba(0,255,136,0.03); }
+  .branch-no { border-top: 2px solid #ff4466; background: rgba(255,68,102,0.03); }
+
+  .branch-header {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .branch-yes .branch-header { color: #00ff88; }
+  .branch-no .branch-header { color: #ff4466; }
+
+  .branch-content {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #ccd;
+    line-height: 1.4;
+  }
+
+  /* ---- RULE CALLOUT ---- */
+  .rule-callout {
+    background: rgba(255, 204, 0, 0.04);
+    border: 1px solid rgba(255,204,0,0.2);
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin: 16px 0 4px;
+  }
+
+  .rule-callout-header {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    color: #ffcc00;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .rule-list {
+    list-style: none;
+  }
+
+  .rule-list li {
+    font-size: 0.82rem;
+    color: #aab;
+    padding: 3px 0;
+    padding-left: 14px;
+    position: relative;
+    line-height: 1.4;
+  }
+
+  .rule-list li::before {
+    content: '▸';
+    position: absolute;
+    left: 0;
+    color: #ffcc00;
+    font-size: 0.7rem;
+  }
+
+  /* divider */
+  .flow-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #223, transparent);
+    margin: 16px 0;
+  }
+
+  /* sizing formula */
+  .formula-box {
+    background: var(--surface2);
+    border: 1px solid #1a2a3a;
+    border-left: 3px solid var(--ib-secondary);
+    border-radius: 0 4px 4px 0;
+    padding: 12px 14px;
+    margin: 4px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    color: #88aacc;
+    line-height: 1.7;
+  }
+
+  .formula-box span {
+    color: var(--ib-primary);
+    font-weight: bold;
+  }
+
+  .formula-box-fib {
+    border-left-color: var(--fib-secondary);
+  }
+  .formula-box-fib span { color: var(--fib-primary); }
+
+  .formula-box-wib {
+    border-left-color: var(--wib-secondary);
+  }
+  .formula-box-wib span { color: var(--wib-primary); }
+
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Trade Decision Flowcharts</h1>
+  <p>Follow every step — no shortcuts — no exceptions</p>
+</div>
+
+<div class="systems-grid">
+
+  <!-- ===== SYSTEM 1: INSIDE BAR FAILURE ===== -->
+  <div class="system sys1">
+    <div class="system-header">
+      <div class="system-icon">📊</div>
+      <div class="system-header-text">
+        <h2>Inside Bar Failure — BTC</h2>
+        <p>Monthly Bias → Drill Down → SFP/IB Entry</p>
+      </div>
+    </div>
+
+    <div class="flow-body">
+
+      <!-- STEP 1 -->
+      <div class="node node-start">
+        <div class="node-label">Step 1 — Higher Timeframe Bias</div>
+        <div class="node-text">Find a Monthly Inside Bar</div>
+        <div class="node-sub">Mother bar fully contains the inside bar high & low</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">then</div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="node node-action">
+        <div class="node-label">Step 2 — Wait for the Break</div>
+        <div class="node-text">Which side of the mother bar does price break?</div>
+        <div class="node-sub">Break of high = look for SHORT · Break of low = look for LONG</div>
+      </div>
+
+      <!-- BRANCH: QUICK FAILURE? -->
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">ask</div>
+      </div>
+
+      <div class="node node-question">
+        <div class="node-label">Step 3 — Invalidation Check</div>
+        <div class="node-text">Does price close a full candle beyond the break on the monthly?</div>
+      </div>
+
+      <div class="branch">
+        <div class="branch-item branch-yes">
+          <div class="branch-header">✓ No close beyond</div>
+          <div class="branch-content">Setup still valid — continue to drill down</div>
+        </div>
+        <div class="branch-item branch-no">
+          <div class="branch-header">✗ Full candle close beyond</div>
+          <div class="branch-content">SETUP INVALIDATED — breakout is real. Remove from watchlist.</div>
+        </div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">if valid</div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="node node-action">
+        <div class="node-label">Step 4 — Drill Down</div>
+        <div class="node-text">Move to Weekly → Daily → Hourly</div>
+        <div class="node-sub">Look for confirmation of the failure at each level</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">then</div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="node node-question">
+        <div class="node-label">Step 5 — Entry Trigger (Hourly / Daily)</div>
+        <div class="node-text">Is there a clear trigger candle?</div>
+        <div class="node-sub">Inside Bar Failure · SFP (sweep + reversal) · Engulfing</div>
+      </div>
+
+      <div class="branch">
+        <div class="branch-item branch-yes">
+          <div class="branch-header">✓ Clear trigger</div>
+          <div class="branch-content">Proceed to entry — fill in trade plan first</div>
+        </div>
+        <div class="branch-item branch-no">
+          <div class="branch-header">✗ No trigger yet</div>
+          <div class="branch-content">WAIT. Do not enter on price being in a zone alone.</div>
+        </div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">if trigger confirmed</div>
+      </div>
+
+      <!-- ENTRY -->
+      <div class="node node-entry">
+        <div class="node-label">Entry</div>
+        <div class="node-text">Enter on the trigger candle</div>
+        <div class="node-sub">After price re-enters inside bar / SFP confirms / engulf closes</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">immediately set</div>
+      </div>
+
+      <!-- STOP -->
+      <div class="node node-stop">
+        <div class="node-label">Stop Loss</div>
+        <div class="node-text">Above/below the SFP wick or trigger candle extreme</div>
+        <div class="node-sub">Just beyond the high/low that was swept — not arbitrary</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">target</div>
+      </div>
+
+      <!-- TARGET -->
+      <div class="node node-target">
+        <div class="node-label">Profit Target</div>
+        <div class="node-text">Other side of the Monthly Mother Bar</div>
+        <div class="node-sub">Full range of the mother bar = your measured move</div>
+      </div>
+
+      <div class="flow-divider"></div>
+
+      <!-- SIZING -->
+      <div class="formula-box">
+        <span>Dollar Risk</span> = Account ($114,000) × Risk % (1–2%)<br>
+        <span>Shares</span> = Dollar Risk ÷ Stop Distance ($)<br>
+        <span>Max risk per trade</span> = $1,140 (1%) or $2,280 (2%)
+      </div>
+
+      <div class="flow-divider"></div>
+
+      <!-- RULES -->
+      <div class="rule-callout">
+        <div class="rule-callout-header">⚠ Non-Negotiable Rules</div>
+        <ul class="rule-list">
+          <li>NO trade without a written pre-trade plan</li>
+          <li>Failure must happen QUICKLY — if price lingers above break level, step aside</li>
+          <li>No trigger candle = no entry, even if bias is perfect</li>
+          <li>Setup expiration date must be set before watching</li>
+          <li>Full candle close beyond mother bar on monthly = done, move on</li>
+          <li>Size by formula — never by feel</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== SYSTEM 2: FIBONACCI RETRACEMENT ===== -->
+  <div class="system sys2">
+    <div class="system-header">
+      <div class="system-icon">📐</div>
+      <div class="system-header-text">
+        <h2>Fibonacci Retracement</h2>
+        <p>Swing ≥50% → 0.618 Entry → Daily Trigger → Extensions</p>
+      </div>
+    </div>
+
+    <div class="flow-body">
+
+      <!-- STEP 1 -->
+      <div class="node node-start">
+        <div class="node-label">Step 1 — Identify the Swing</div>
+        <div class="node-text">Find a clear impulsive move on Daily / Weekly with a swing low and swing high</div>
+        <div class="node-sub">⚠ The swing must be ≥50% in size from low to high — minor swings do not qualify. Backtest shows 0% win rate on swings under 30%.</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">then</div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="node node-action">
+        <div class="node-label">Step 2 — Draw the Fibonacci</div>
+        <div class="node-text">Anchor from swing low to swing high (for longs)</div>
+        <div class="node-sub">Mark key levels: 0.382 / 0.500 / 0.618 / 0.786 · Entry target = 0.618 only</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">also mark</div>
+      </div>
+
+      <!-- BREAKOUT CANDLE -->
+      <div class="node node-action">
+        <div class="node-label">Step 2b — Mark the Swing Low</div>
+        <div class="node-text">Note the exact price of the swing low — this is your stop anchor</div>
+        <div class="node-sub">Stop goes just below the swing low (0.5% buffer) — NOT below 0.786. Backtest shows 0.786 stop gets swept too often before price reverses.</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">wait for</div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="node node-question">
+        <div class="node-label">Step 3 — Level Check</div>
+        <div class="node-text">Has price retraced to the 0.618 level?</div>
+      </div>
+
+      <div class="branch">
+        <div class="branch-item branch-yes">
+          <div class="branch-header">✓ Price at 0.618</div>
+          <div class="branch-content">Move to daily — look for trigger candle</div>
+        </div>
+        <div class="branch-item branch-no">
+          <div class="branch-header">✗ Not there yet</div>
+          <div class="branch-content">WAIT. Set an alert at 0.618. Do not anticipate.</div>
+        </div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">if in zone</div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="node node-question">
+        <div class="node-label">Step 4 — Daily Trigger</div>
+        <div class="node-text">Is there a clear trigger candle on the daily chart?</div>
+        <div class="node-sub">Inside Bar Failure · SFP · Engulfing</div>
+      </div>
+
+      <div class="branch">
+        <div class="branch-item branch-yes">
+          <div class="branch-header">✓ Clear trigger</div>
+          <div class="branch-content">Proceed to entry — fill plan first</div>
+        </div>
+        <div class="branch-item branch-no">
+          <div class="branch-header">✗ No trigger</div>
+          <div class="branch-content">WAIT at level. Price action must confirm — not just the level.</div>
+        </div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">if trigger confirmed</div>
+      </div>
+
+      <!-- ENTRY -->
+      <div class="node node-entry">
+        <div class="node-label">Entry</div>
+        <div class="node-text">Enter at the 0.618 level on daily trigger confirmation</div>
+        <div class="node-sub">Price must be at 0.618 — not 0.702, not approaching. Exact level only.</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">set stop</div>
+      </div>
+
+      <!-- STOP -->
+      <div class="node node-stop">
+        <div class="node-label">Stop Loss</div>
+        <div class="node-text">Below the swing low — always, no exceptions</div>
+        <div class="node-sub">Place 0.5% below the swing low price · Do NOT use 0.786 as stop — backtest shows it gets swept before price reverses, turning winners into losses</div>
+      </div>
+
+      <!-- INVALIDATION -->
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">watch for</div>
+      </div>
+
+      <div class="node node-invalidate">
+        <div class="node-label">Invalidation</div>
+        <div class="node-text">Price closes below the swing low on the daily</div>
+        <div class="node-sub">Exit immediately — the swing structure is broken, the setup no longer exists</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">targets</div>
+      </div>
+
+      <!-- TARGETS -->
+      <div class="node node-fib-target2">
+        <div class="node-label">Target — 2.618 Extension</div>
+        <div class="node-text">Close full position here — one target, no splits</div>
+        <div class="node-sub">Backtest: 90% of winning trades reached 2.618 once 1.618 was hit. Splitting at 1.618 left +22R on the table over 36 trades. Let it run.</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">milestone</div>
+      </div>
+
+      <div class="node node-fib-target1">
+        <div class="node-label">1.618 Level — Move Stop to Breakeven</div>
+        <div class="node-text">Do NOT exit here — move stop to breakeven only</div>
+        <div class="node-sub">This protects against the rare case price reverses before 2.618. Keep full position running to target.</div>
+      </div>
+
+      <div class="flow-divider"></div>
+
+      <!-- SIZING -->
+      <div class="formula-box formula-box-fib">
+        <span>Dollar Risk</span> = Account ($114,000) × Risk % (1–2%)<br>
+        <span>Shares</span> = Dollar Risk ÷ Stop Distance ($)<br>
+        <span>Full position</span> exits at 2.618 · Move stop to BE when 1.618 is reached
+      </div>
+
+      <div class="flow-divider"></div>
+
+      <!-- RULES -->
+      <div class="rule-callout">
+        <div class="rule-callout-header">⚠ Non-Negotiable Rules</div>
+        <ul class="rule-list">
+          <li>Swing must be ≥50% from low to high — no exceptions. Small swings have 0% win rate.</li>
+          <li>Entry at 0.618 only — not 0.702, not the zone, not "close enough"</li>
+          <li>Stop = below the swing low (0.5% buffer) — never below 0.786</li>
+          <li>No daily trigger candle = no entry, even if 0.618 is perfect</li>
+          <li>When price reaches 1.618: move stop to breakeven — do NOT exit</li>
+          <li>Full position exits at 2.618 only — no early exits, no partial takes</li>
+          <li>Size by formula — full position, single target</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== SYSTEM 3: WEEKLY STOCK INSIDE BAR ===== -->
+  <div class="system sys3">
+    <div class="system-header">
+      <div class="system-icon">📈</div>
+      <div class="system-header-text">
+        <h2>Weekly Stock IB</h2>
+        <p>Stocks Only · Weekly Bias · Fade the Breakout · R/R ≥10:1</p>
+      </div>
+    </div>
+
+    <div class="flow-body">
+
+      <!-- STEP 1 -->
+      <div class="node node-start">
+        <div class="node-label">Step 1 — Find the Weekly Inside Bar</div>
+        <div class="node-text">Identify a weekly candle fully contained within the prior week</div>
+        <div class="node-sub">Inside bar high ≤ mother bar high · Inside bar low ≥ mother bar low · Both conditions required</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">then</div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="node node-action">
+        <div class="node-label">Step 2 — Mark the Mother Bar Levels</div>
+        <div class="node-text">Note the exact high and low of the mother bar — these are your trade boundaries</div>
+        <div class="node-sub">Mother bar high = short entry / stop for longs · Mother bar low = long entry / stop for shorts</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">check</div>
+      </div>
+
+      <!-- STEP 3 — R/R FILTER -->
+      <div class="node node-question">
+        <div class="node-label">Step 3 — R/R Filter</div>
+        <div class="node-text">Is the R/R at least 10:1?</div>
+        <div class="node-sub">R/R = mother bar range ÷ (entry to stop distance, 0.5% buffer) · Backtest: ≥10:1 filter raises WR to 55.1% and expectancy to +9.89R</div>
+      </div>
+
+      <div class="branch">
+        <div class="branch-item branch-yes">
+          <div class="branch-header">✓ R/R ≥ 10:1</div>
+          <div class="branch-content">Setup qualifies — add to watchlist and wait for break</div>
+        </div>
+        <div class="branch-item branch-no">
+          <div class="branch-header">✗ R/R &lt; 10:1</div>
+          <div class="branch-content">SKIP. Mother bar is too narrow relative to stop distance. No exceptions.</div>
+        </div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">wait for</div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="node node-action">
+        <div class="node-label">Step 4 — Wait for the Breakout</div>
+        <div class="node-text">Which side of the mother bar does price break on the weekly?</div>
+        <div class="node-sub">Break of high = SHORT setup (fade the breakout) · Break of low = LONG setup (fade the breakdown)</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">ask</div>
+      </div>
+
+      <!-- STEP 5 — INVALIDATION -->
+      <div class="node node-question">
+        <div class="node-label">Step 5 — Invalidation Check</div>
+        <div class="node-text">Does price close a full weekly candle beyond the break level within 4 weeks?</div>
+      </div>
+
+      <div class="branch">
+        <div class="branch-item branch-yes">
+          <div class="branch-header">✓ Quick failure / no close beyond</div>
+          <div class="branch-content">Setup valid — price rejected the breakout. Enter at the mother bar level.</div>
+        </div>
+        <div class="branch-item branch-no">
+          <div class="branch-header">✗ Full weekly close beyond</div>
+          <div class="branch-content">SETUP INVALIDATED — real breakout confirmed. Remove from watchlist immediately.</div>
+        </div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">if valid</div>
+      </div>
+
+      <!-- ENTRY -->
+      <div class="node node-entry">
+        <div class="node-label">Entry</div>
+        <div class="node-text">Enter at the mother bar break level (high for shorts, low for longs)</div>
+        <div class="node-sub">You are fading the breakout — entering as price returns back inside the mother bar range</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">set stop</div>
+      </div>
+
+      <!-- STOP -->
+      <div class="node node-stop">
+        <div class="node-label">Stop Loss</div>
+        <div class="node-text">0.5% beyond the break level (outside the mother bar)</div>
+        <div class="node-sub">SHORT: stop = mother bar high × 1.005 · LONG: stop = mother bar low × 0.995 · Tight stop = massive natural R/R</div>
+      </div>
+
+      <div class="connector connector-then">
+        <div class="connector-line"></div>
+        <div class="connector-label">target</div>
+      </div>
+
+      <!-- TARGET -->
+      <div class="node node-target">
+        <div class="node-label">Profit Target</div>
+        <div class="node-text">Opposite side of the weekly mother bar — full range</div>
+        <div class="node-sub">SHORT: target = mother bar low · LONG: target = mother bar high · The entire mother bar width is your measured move. Backtest: 50.8% WR, +7.88R expectancy, PF 17.00 on MSFT (1986–2026)</div>
+      </div>
+
+      <div class="flow-divider"></div>
+
+      <!-- SIZING -->
+      <div class="formula-box formula-box-wib">
+        <span>Dollar Risk</span> = Account ($114,000) × Risk % (1–2%)<br>
+        <span>Shares</span> = Dollar Risk ÷ Stop Distance (0.5% of entry)<br>
+        <span>R/R</span> = Mother Bar Range ÷ Stop Distance · Must be ≥10:1 before entry
+      </div>
+
+      <div class="flow-divider"></div>
+
+      <!-- RULES -->
+      <div class="rule-callout">
+        <div class="rule-callout-header">⚠ Non-Negotiable Rules</div>
+        <ul class="rule-list">
+          <li>Stocks only — this system was not validated on crypto</li>
+          <li>Weekly timeframe only — this is not a daily or monthly system</li>
+          <li>R/R must be ≥10:1 before entering — skip anything below</li>
+          <li>You are FADING the breakout — not chasing it. Enter when price returns inside the mother bar.</li>
+          <li>Full weekly close beyond the break level = real breakout, exit immediately</li>
+          <li>Setup expires after 4 weeks — if no clear failure by then, move on</li>
+          <li>Size by formula — never by feel</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
