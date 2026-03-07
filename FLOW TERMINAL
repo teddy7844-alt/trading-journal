@@ -1,0 +1,222 @@
+import { useState } from "react";
+
+const SECTORS = [
+  { name:"Technology",       etf:"XLK",  color:"#00d4ff" },
+  { name:"Healthcare",       etf:"XLV",  color:"#00ff88" },
+  { name:"Financials",       etf:"XLF",  color:"#ffaa00" },
+  { name:"Energy",           etf:"XLE",  color:"#ff6600" },
+  { name:"Consumer Disc.",   etf:"XLY",  color:"#ff3366" },
+  { name:"Industrials",      etf:"XLI",  color:"#bb88ff" },
+  { name:"Materials",        etf:"XLB",  color:"#44ffaa" },
+  { name:"Utilities",        etf:"XLU",  color:"#ffdd44" },
+  { name:"Real Estate",      etf:"XLRE", color:"#ff88aa" },
+  { name:"Comm. Services",   etf:"XLC",  color:"#88ddff" },
+  { name:"Consumer Staples", etf:"XLP",  color:"#aaffdd" },
+];
+const CRYPTO = [
+  { name:"Bitcoin",        ticker:"BTC" },
+  { name:"Ethereum",       ticker:"ETH" },
+  { name:"Solana",         ticker:"SOL" },
+  { name:"XRP",            ticker:"XRP" },
+  { name:"Altcoin Basket", ticker:"ALT" },
+];
+const STEPS = ["Fetching ETF flow data...","Scanning institutional positioning...","Analyzing macro indicators...","Processing crypto dominance...","Synthesizing sector verdict..."];
+const TABS  = ["Money Flow","Sectors","Crypto","Macro"];
+
+function biasStyle(b) {
+  return { borderRadius:"2px", padding:"3px 10px", fontSize:"11px", fontWeight:"700", letterSpacing:"2px", display:"inline-block",
+    background:b==="BULLISH"?"#001a0a":b==="BEARISH"?"#1a0008":"#0a0a1a",
+    color:b==="BULLISH"?"#00ff88":b==="BEARISH"?"#ff3366":"#aaaaff",
+    border:`1px solid ${b==="BULLISH"?"#00aa44":b==="BEARISH"?"#aa0033":"#4444aa"}` };
+}
+function PipMeter({ val, color }) {
+  const f = Math.round((val/100)*10);
+  return (
+    <div style={{display:"flex",gap:"4px",alignItems:"center"}}>
+      {Array.from({length:10}).map((_,i)=>(
+        <div key={i} style={{width:"15px",height:"15px",borderRadius:"2px",border:`1px solid ${i<f?color:"#1a3a5a"}`,background:i<f?color:"#0a1420",boxShadow:i<f?`0 0 6px ${color}55`:"none"}}/>
+      ))}
+      <span style={{fontSize:"14px",color,marginLeft:"7px",fontWeight:"700"}}>{val}%</span>
+    </div>
+  );
+}
+
+async function callClaude(prompt) {
+  const headers = { "Content-Type":"application/json","anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" };
+  const tools = [{ type:"web_search_20250305", name:"web_search" }];
+  let messages = [{ role:"user", content:prompt }];
+  for (let i=0; i<8; i++) {
+    const res = await fetch("https://api.anthropic.com/v1/messages",{ method:"POST", headers, body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:4000, tools, messages }) });
+    if (!res.ok) { const e=await res.json(); throw new Error(e.error?.message||`HTTP ${res.status}`); }
+    const raw = await res.json();
+    messages.push({ role:"assistant", content:raw.content });
+    if (raw.stop_reason==="end_turn") {
+      const text = raw.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+      const m = text.replace(/```json|```/g,"").trim().match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("No JSON in response");
+      return JSON.parse(m[0]);
+    }
+    const toolUse = raw.content.filter(b=>b.type==="tool_use");
+    if (!toolUse.length) {
+      const text = raw.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+      const m = text.replace(/```json|```/g,"").trim().match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("No JSON in response");
+      return JSON.parse(m[0]);
+    }
+    messages.push({ role:"user", content:toolUse.map(b=>({ type:"tool_result", tool_use_id:b.id, content:b.content||"" })) });
+  }
+  throw new Error("Max iterations reached");
+}
+
+export default function SectorTerminal() {
+  const [tab,      setTab]      = useState(0);
+  const [scanning, setScanning] = useState(false);
+  const [step,     setStep]     = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [data,     setData]     = useState(null);
+  const [error,    setError]    = useState(null);
+
+  async function runScan() {
+    setScanning(true); setStep(0); setProgress(0); setData(null); setError(null);
+    for (let i=0; i<STEPS.length; i++) { setStep(i); setProgress(((i+1)/STEPS.length)*100); await new Promise(r=>setTimeout(r,900)); }
+    try {
+      const d = await callClaude(`You are a professional sector rotation analyst. Analyze current money flows across S&P 500 sectors, crypto, and macro for ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}. Return ONLY valid JSON (no markdown):
+{"scanTime":"${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})} - Live Scan","verdict":{"summary":"one sentence","regime":"RISK-ON or RISK-OFF or ROTATION or DEFENSIVE","conviction":number 0-100,"color":"#00ff88 or #ff3366 or #ffaa00 or #aa88ff"},"narrative":"2-3 sentences","sectors":[{"etf":"XLK","weeklyFlow":number,"bias":"BULLISH or BEARISH or NEUTRAL","instPos":"Overweight or Underweight or Neutral","momentum":number,"topTickers":["T1","T2","T3"],"note":"insight"}],"crypto":[{"ticker":"BTC","weeklyFlow":number,"bias":"BULLISH or BEARISH or NEUTRAL","momentum":number,"note":"insight"}],"btcDominance":number,"ethShare":number,"altShare":number,"macro":[{"metric":"Fed Funds Rate","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"10Y Treasury","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"DXY (Dollar)","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"VIX","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Gold (XAU)","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Crude Oil (WTI)","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Credit Spreads","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Yield Curve","value":"x","change":"x","direction":"up or down or flat","note":"x"}]}
+All 11 sectors: XLK,XLV,XLF,XLE,XLY,XLI,XLB,XLU,XLRE,XLC,XLP. All 5 crypto: BTC,ETH,SOL,XRP,ALT.`);
+      setData(d);
+    } catch(e) { setError("Scan failed: "+e.message); }
+    finally { setScanning(false); }
+  }
+
+  const sm={}, cm={};
+  data?.sectors?.forEach(s=>sm[s.etf]=s);
+  data?.crypto?.forEach(c=>cm[c.ticker]=c);
+  const card = { background:"#0a1420", border:"1px solid #1a3a5a", borderRadius:"3px", padding:"16px", position:"relative", overflow:"hidden" };
+
+  return (
+    <div style={{fontFamily:"'Courier New',monospace",background:"#080c10",color:"#ffffff",minHeight:"100vh",fontSize:"15px"}}>
+      {/* HEADER */}
+      <div style={{background:"#0a1420",borderBottom:"1px solid #1a3a5a",padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"10px",flexWrap:"wrap"}}>
+        <div>
+          <div style={{fontSize:"17px",fontWeight:"700",color:"#00d4ff",letterSpacing:"3px"}}>⬡ SECTOR ROTATION TERMINAL</div>
+          <div style={{fontSize:"11px",color:"#8aaacc",letterSpacing:"2px",marginTop:"2px"}}>MONEY FLOW · INSTITUTIONAL POSITIONING · MACRO REGIME</div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+          {data&&<div style={{background:"#001a2a",border:"1px solid #003a5a",borderRadius:"2px",padding:"4px 10px",fontSize:"11px",color:"#00aaff",letterSpacing:"2px"}}>● LIVE</div>}
+          <button onClick={runScan} disabled={scanning} style={{background:scanning?"linear-gradient(135deg,#330011,#440022)":"linear-gradient(135deg,#003366,#004488)",border:`1px solid ${scanning?"#aa0044":"#0066aa"}`,borderRadius:"3px",color:scanning?"#ff3366":"#00d4ff",fontFamily:"'Courier New',monospace",fontSize:"13px",fontWeight:"700",letterSpacing:"2px",padding:"9px 24px",cursor:scanning?"not-allowed":"pointer",textTransform:"uppercase"}}>
+            {scanning?"● SCANNING...":"▶ RUN SCAN"}
+          </button>
+        </div>
+      </div>
+
+      {/* LOADING */}
+      {scanning&&(
+        <div style={{padding:"50px 20px",textAlign:"center"}}>
+          {STEPS.map((s,i)=>(
+            <div key={i} style={{fontSize:"14px",letterSpacing:"2px",marginBottom:"10px",color:i<step?"#3a5a6a":i===step?"#00d4ff":"#1a3a5a",fontWeight:i===step?"700":"400"}}>{i<step?"✓":i===step?"▶":"○"} {s}</div>
+          ))}
+          <div style={{background:"#0a1420",border:"1px solid #1a3a5a",height:"5px",margin:"22px auto",maxWidth:"400px",overflow:"hidden",borderRadius:"2px"}}>
+            <div style={{background:"linear-gradient(90deg,#003a6a,#00d4ff)",height:"100%",width:`${progress}%`,transition:"width 0.6s ease"}}/>
+          </div>
+        </div>
+      )}
+      {error&&!scanning&&<div style={{padding:"20px",color:"#ff3366"}}>⚠ {error}</div>}
+      {!scanning&&!data&&!error&&<div style={{textAlign:"center",padding:"70px 20px",color:"#4a7a9a"}}><div style={{fontSize:"38px",marginBottom:"12px",opacity:0.4}}>⬡</div><div style={{fontSize:"14px",letterSpacing:"3px",textTransform:"uppercase"}}>Press Run Scan to analyze market flows</div></div>}
+
+      {/* DATA */}
+      {!scanning&&data&&(
+        <>
+          <div style={{padding:"14px 20px 0"}}>
+            <div style={{background:"#0a1420",border:"1px solid #1a3a5a",borderRadius:"3px",padding:"16px 20px",marginBottom:"12px",display:"flex",alignItems:"center",gap:"20px",flexWrap:"wrap"}}>
+              <div><div style={{fontSize:"11px",color:"#8aaacc",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"4px"}}>MARKET REGIME</div><div style={{fontSize:"20px",fontWeight:"700",color:data.verdict.color}}>{data.verdict.regime}</div></div>
+              <div style={{flex:1}}><div style={{fontSize:"11px",color:"#8aaacc",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"4px"}}>VERDICT</div><div style={{fontSize:"14px",color:"#ffffff",lineHeight:"1.5"}}>{data.verdict.summary}</div></div>
+              <div><div style={{fontSize:"11px",color:"#8aaacc",letterSpacing:"2px",textTransform:"uppercase",marginBottom:"4px"}}>CONVICTION</div><PipMeter val={data.verdict.conviction} color={data.verdict.color}/></div>
+            </div>
+            {data.narrative&&<div style={{background:"#070b12",border:"1px solid #1a3a5a",borderRadius:"3px",padding:"12px 16px",fontSize:"14px",lineHeight:"1.8",color:"#ffffff",marginBottom:"12px"}}>{data.narrative}</div>}
+          </div>
+          <div style={{display:"flex",borderBottom:"1px solid #1a3a5a",padding:"0 20px",overflowX:"auto"}}>
+            {TABS.map((t,i)=>(
+              <button key={t} onClick={()=>setTab(i)} style={{padding:"10px 18px",cursor:"pointer",fontSize:"13px",letterSpacing:"2px",textTransform:"uppercase",color:tab===i?"#00d4ff":"#6a9aaa",background:"none",border:"none",borderBottom:tab===i?"2px solid #00d4ff":"2px solid transparent",fontFamily:"'Courier New',monospace",whiteSpace:"nowrap"}}>{t}</button>
+            ))}
+          </div>
+          <div style={{padding:"16px 20px"}}>
+            {tab===0&&(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:"10px"}}>
+                {SECTORS.map(sec=>{const d=sm[sec.etf];if(!d)return null;const isIn=d.weeklyFlow>0;return(
+                  <div key={sec.etf} style={card}>
+                    <div style={{position:"absolute",top:0,left:0,width:"3px",height:"100%",background:sec.color}}/>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"10px"}}>
+                      <div><div style={{fontSize:"14px",fontWeight:"700",color:"#ffffff"}}>{sec.name}</div><div style={{fontSize:"12px",color:"#8aaacc",marginTop:"2px"}}>{sec.etf}</div></div>
+                      <div style={biasStyle(d.bias)}>{d.bias}</div>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:"6px"}}><span style={{fontSize:"12px",color:"#8aaacc"}}>WEEKLY FLOW</span><span style={{fontSize:"15px",fontWeight:"700",color:isIn?"#00ff88":"#ff3366"}}>{isIn?"+":""}${d.weeklyFlow?.toFixed(1)}B</span></div>
+                    <div style={{height:"4px",borderRadius:"2px",marginBottom:"8px",background:"#0d1a28",overflow:"hidden"}}><div style={{width:`${Math.min(100,(Math.abs(d.weeklyFlow)/5)*100)}%`,height:"100%",background:isIn?"#00ff88":"#ff3366"}}/></div>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:"5px"}}><span style={{fontSize:"12px",color:"#8aaacc"}}>INST. POS.</span><span style={{fontSize:"13px",color:"#ffffff"}}>{d.instPos}</span></div>
+                    <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:"12px",color:"#8aaacc"}}>MOMENTUM</span><span style={{fontSize:"13px",color:d.momentum>0?"#00ff88":"#ff3366"}}>{d.momentum>0?"↑":"↓"} {Math.abs(d.momentum)}%</span></div>
+                    <div style={{display:"flex",gap:"5px",flexWrap:"wrap",marginTop:"8px"}}>{d.topTickers?.map(t=><span key={t} style={{background:"#0d1a28",border:"1px solid #2a4a6a",borderRadius:"2px",padding:"2px 7px",fontSize:"11px",color:"#ccdde8"}}>{t}</span>)}</div>
+                  </div>
+                );})}
+              </div>
+            )}
+            {tab===1&&(
+              <div style={{display:"grid",gap:"7px"}}>
+                {SECTORS.map(sec=>{const d=sm[sec.etf];if(!d)return null;const isIn=d.weeklyFlow>0;return(
+                  <div key={sec.etf} style={{...card,padding:"10px 14px"}}>
+                    <div style={{position:"absolute",top:0,left:0,width:"3px",height:"100%",background:sec.color}}/>
+                    <div style={{display:"flex",alignItems:"center",gap:"12px",flexWrap:"wrap"}}>
+                      <div style={{minWidth:"50px",fontSize:"14px",color:sec.color,fontWeight:"700"}}>{sec.etf}</div>
+                      <div style={{minWidth:"150px",fontSize:"13px",color:"#ffffff"}}>{sec.name}</div>
+                      <div style={{minWidth:"88px"}}><div style={biasStyle(d.bias)}>{d.bias}</div></div>
+                      <div style={{minWidth:"90px",fontSize:"15px",fontWeight:"700",color:isIn?"#00ff88":"#ff3366"}}>{isIn?"+":""}${d.weeklyFlow?.toFixed(1)}B</div>
+                      <div style={{flex:1,minWidth:"60px",background:"#050a10",height:"7px",borderRadius:"2px",overflow:"hidden"}}><div style={{width:`${Math.min(100,(Math.abs(d.weeklyFlow)/5)*100)}%`,height:"100%",background:isIn?"#00ff88":"#ff3366"}}/></div>
+                      <div style={{fontSize:"11px",color:"#ccdde8",minWidth:"180px",textAlign:"right"}}>{d.note}</div>
+                    </div>
+                  </div>
+                );})}
+              </div>
+            )}
+            {tab===2&&(
+              <>
+                <div style={{background:"#0a1420",border:"1px solid #1a3a5a",borderRadius:"3px",padding:"14px",marginBottom:"14px"}}>
+                  <div style={{fontSize:"11px",color:"#8aaacc",letterSpacing:"2px",marginBottom:"8px"}}>MARKET CAP DOMINANCE</div>
+                  <div style={{background:"#050a10",borderRadius:"2px",height:"26px",overflow:"hidden",display:"flex"}}>
+                    <div style={{width:`${data.btcDominance}%`,height:"100%",background:"#f7931a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:"700",color:"#000"}}>BTC {data.btcDominance}%</div>
+                    <div style={{width:`${data.ethShare}%`,height:"100%",background:"#627eea",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:"700",color:"#fff"}}>ETH {data.ethShare}%</div>
+                    <div style={{width:`${data.altShare}%`,height:"100%",background:"#1a3a5a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"11px",fontWeight:"700",color:"#ccdde8"}}>ALT {data.altShare}%</div>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:"10px"}}>
+                  {CRYPTO.map(coin=>{const d=cm[coin.ticker];if(!d)return null;const isIn=d.weeklyFlow>0;const cols={BTC:"#f7931a",ETH:"#627eea",SOL:"#9945ff",XRP:"#346aa9",ALT:"#00ffcc"};return(
+                    <div key={coin.ticker} style={card}>
+                      <div style={{position:"absolute",top:0,left:0,width:"3px",height:"100%",background:cols[coin.ticker]}}/>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"10px"}}>
+                        <div><div style={{fontSize:"16px",fontWeight:"700",color:cols[coin.ticker]}}>{coin.ticker}</div><div style={{fontSize:"12px",color:"#8aaacc",marginTop:"2px"}}>{coin.name}</div></div>
+                        <div style={biasStyle(d.bias)}>{d.bias}</div>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:"6px"}}><span style={{fontSize:"12px",color:"#8aaacc"}}>WEEKLY FLOW</span><span style={{fontSize:"15px",fontWeight:"700",color:isIn?"#00ff88":"#ff3366"}}>{isIn?"+":""}${d.weeklyFlow?.toFixed(1)}B</span></div>
+                      <div style={{height:"4px",borderRadius:"2px",marginBottom:"8px",background:"#0d1a28",overflow:"hidden"}}><div style={{width:`${Math.min(100,(Math.abs(d.weeklyFlow)/3)*100)}%`,height:"100%",background:isIn?"#00ff88":"#ff3366"}}/></div>
+                      {d.note&&<div style={{fontSize:"12px",color:"#ccdde8",lineHeight:"1.6"}}>{d.note}</div>}
+                    </div>
+                  );})}
+                </div>
+              </>
+            )}
+            {tab===3&&(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:"10px"}}>
+                {data.macro?.map(m=>(
+                  <div key={m.metric} style={card}>
+                    <div style={{fontSize:"11px",color:"#8aaacc",marginBottom:"4px"}}>{m.metric}</div>
+                    <div style={{fontSize:"24px",fontWeight:"700",color:m.direction==="up"?"#ff6644":m.direction==="down"?"#00ff88":"#ffffff"}}>{m.value}</div>
+                    <div style={{fontSize:"13px",marginTop:"4px",color:m.direction==="up"?"#ff6644":m.direction==="down"?"#00ff88":"#8aaacc"}}>{m.direction==="up"?"▲":m.direction==="down"?"▼":"—"} {m.change}</div>
+                    <div style={{fontSize:"12px",color:"#ccdde8",marginTop:"8px",lineHeight:"1.6"}}>{m.note}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{fontSize:"11px",color:"#4a7a9a",marginTop:"16px",textAlign:"right"}}>◎ {data.scanTime}</div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
