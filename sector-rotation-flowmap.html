@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sector Rotation Flow Map</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070a0f; font-family: 'Courier New', monospace; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #070a0f; }
+  ::-webkit-scrollbar-thumb { background: #1a2a3a; border-radius: 3px; }
+  .srt-root { font-family:'Courier New',monospace; background:#070a0f; color:#ffffff; min-height:100vh; font-size:15px; }
+  .srt-header { background:#07090e; border-bottom:1px solid #1a2a3a; padding:15px 24px; display:flex; align-items:center; justify-content:space-between; }
+  .srt-title  { font-size:18px; font-weight:700; color:#ffaa00; letter-spacing:4px; text-transform:uppercase; }
+  .srt-sub    { font-size:12px; color:#7a9aaa; letter-spacing:2px; margin-top:4px; }
+  .srt-btn { background:linear-gradient(135deg,#1a1000,#2a1800); border:1px solid #aa6600; border-radius:2px; color:#ffaa00; font-family:'Courier New',monospace; font-size:14px; font-weight:700; letter-spacing:3px; padding:10px 26px; cursor:pointer; text-transform:uppercase; }
+  .srt-btn:hover:not(:disabled) { background:linear-gradient(135deg,#2a1800,#3a2200); }
+  .srt-btn:disabled { border-color:#3a2200; color:#553300; cursor:not-allowed; }
+  .srt-body { padding:18px 24px; }
+  .srt-loading { padding:55px 20px; text-align:center; }
+  .srt-load-step { font-size:14px; letter-spacing:2px; margin-bottom:10px; }
+  .srt-prog-track { background:#0a1018; border:1px solid #1a2a3a; border-radius:2px; height:4px; width:400px; max-width:90%; margin:20px auto; overflow:hidden; }
+  .srt-prog-fill  { height:100%; background:linear-gradient(90deg,#331100,#ffaa00); transition:width 0.7s ease; }
+  .srt-verdict { background:#080c12; border:1px solid #1a2a3a; border-left:3px solid #ffaa00; border-radius:3px; padding:16px 20px; display:flex; gap:26px; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; }
+  .srt-vlabel  { font-size:11px; color:#7a9aaa; letter-spacing:3px; text-transform:uppercase; margin-bottom:6px; }
+  .srt-vphase  { font-size:22px; font-weight:700; letter-spacing:2px; }
+  .srt-narrative { font-size:14px; color:#ffffff; line-height:1.8; flex:1; min-width:200px; }
+  .srt-pips { display:flex; gap:3px; align-items:center; margin-top:5px; }
+  .srt-pip  { width:14px; height:14px; border-radius:2px; border:1px solid #1a2a3a; }
+  .srt-section { margin-bottom:20px; }
+  .srt-sec-title { font-size:12px; color:#7a9aaa; letter-spacing:3px; text-transform:uppercase; margin-bottom:12px; padding-bottom:7px; border-bottom:1px solid #1a2a3a; }
+  .srt-flow-row { display:flex; align-items:center; margin-bottom:10px; background:#080c12; border:1px solid #1a2a3a; border-radius:3px; padding:12px 16px; position:relative; flex-wrap:wrap; gap:8px; }
+  .srt-box { min-width:130px; text-align:center; padding:8px 12px; border-radius:2px; border:1px solid; }
+  .srt-arrow { flex:1; min-width:120px; display:flex; flex-direction:column; align-items:center; padding:0 10px; }
+  .srt-arrow-line { height:3px; width:100%; display:flex; align-items:center; }
+  .srt-arrow-fill { height:3px; border-radius:2px; flex:1; }
+  .srt-sname { font-size:14px; font-weight:700; }
+  .srt-setf  { font-size:11px; margin-top:3px; }
+  .srt-heatmap { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-bottom:20px; }
+  .srt-heat { background:#080c12; border:1px solid #1a2a3a; border-radius:3px; padding:14px; position:relative; overflow:hidden; }
+  .srt-heat:hover { border-color:#3a5a6a; }
+  .srt-heat-bg    { position:absolute; inset:0; opacity:0.06; pointer-events:none; }
+  .srt-heat-etf   { font-size:16px; font-weight:700; letter-spacing:2px; margin-bottom:3px; }
+  .srt-heat-name  { font-size:11px; color:#7a9aaa; margin-bottom:10px; }
+  .srt-heat-score { font-size:26px; font-weight:700; line-height:1; }
+  .srt-heat-track { background:#050810; border-radius:2px; height:5px; margin-top:9px; overflow:hidden; }
+  .srt-heat-fill  { height:100%; border-radius:2px; transition:width 0.8s ease; }
+  .srt-heat-sig   { font-size:11px; letter-spacing:2px; margin-top:7px; font-weight:700; }
+  .srt-heat-rank  { position:absolute; top:9px; right:11px; font-size:11px; color:#4a6a7a; }
+  .srt-cycle-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
+  @media(max-width:800px){ .srt-cycle-grid{ grid-template-columns:repeat(2,1fr); } }
+  .srt-cycle-col  { border-radius:3px; padding:14px; border:1px solid; }
+  .srt-cycle-ph   { font-size:12px; font-weight:700; letter-spacing:3px; margin-bottom:3px; }
+  .srt-cycle-lbl  { font-size:10px; letter-spacing:2px; margin-bottom:12px; opacity:0.8; }
+  .srt-cycle-sec  { display:flex; align-items:center; gap:7px; margin-bottom:7px; padding:6px 7px; background:rgba(0,0,0,0.3); border-radius:2px; }
+  .srt-cycle-dot  { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .srt-cycle-sn   { font-size:12px; font-weight:600; }
+  .srt-cycle-et   { font-size:10px; color:#6a8a7a; }
+  .srt-badge      { font-size:10px; font-weight:700; padding:2px 6px; border-radius:1px; }
+  .srt-empty      { text-align:center; padding:75px 20px; color:#2a4a5a; }
+  .srt-timestamp  { font-size:12px; color:#2a4a5a; text-align:right; margin-top:16px; padding-top:10px; border-top:1px solid #0d1a24; }
+  @keyframes pulse{ 0%,100%{opacity:1}50%{opacity:0.4} }
+  .pulse{ animation:pulse 1s infinite; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+const SECTORS = [
+  {id:"XLK", name:"Technology",       color:"#00c8ff", cycle:"Late"},
+  {id:"XLV", name:"Healthcare",       color:"#00e87a", cycle:"Early"},
+  {id:"XLF", name:"Financials",       color:"#ffaa00", cycle:"Early"},
+  {id:"XLE", name:"Energy",           color:"#ff6600", cycle:"Mid"},
+  {id:"XLY", name:"Consumer Disc.",   color:"#ff3366", cycle:"Early"},
+  {id:"XLI", name:"Industrials",      color:"#bb88ff", cycle:"Mid"},
+  {id:"XLB", name:"Materials",        color:"#44ffaa", cycle:"Mid"},
+  {id:"XLU", name:"Utilities",        color:"#ffdd44", cycle:"Late"},
+  {id:"XLRE",name:"Real Estate",      color:"#ff88bb", cycle:"Late"},
+  {id:"XLC", name:"Comm. Services",   color:"#66ddff", cycle:"Late"},
+  {id:"XLP", name:"Consumer Staples", color:"#aaffcc", cycle:"Defensive"},
+];
+const CYCLE_ORDER = ["Early","Mid","Late","Defensive"];
+const CYCLE_CFG = {
+  Early:     {bg:"#001a0a",border:"#00aa44",text:"#00ff88",label:"EXPANSION"},
+  Mid:       {bg:"#0a0f00",border:"#aaaa00",text:"#ffff44",label:"PEAK"},
+  Late:      {bg:"#0a0500",border:"#aa5500",text:"#ff9900",label:"SLOWDOWN"},
+  Defensive: {bg:"#050010",border:"#5500aa",text:"#aa66ff",label:"CONTRACTION"},
+};
+const LOAD_STEPS = [
+  "Pulling ETF price action & volume...",
+  "Mapping institutional flow vectors...",
+  "Scoring rotation momentum...",
+  "Identifying from/to sector pairs...",
+  "Building rotation signal matrix...",
+];
+
+const SC = s => SECTORS.find(x=>x.id===s)?.color||"#888";
+const scoreColor = n => n>50?"#00ff88":n>20?"#88ff44":n>0?"#ccff44":n>-20?"#ffaa00":n>-50?"#ff6600":"#ff3366";
+const strOp = s => ({STRONG:1,MODERATE:0.7,WEAK:0.4}[s]||0.5);
+
+function PipMeter({value,color}) {
+  const f=Math.round((value/100)*10);
+  return (
+    <div className="srt-pips">
+      {Array.from({length:10}).map((_,i)=>(
+        <div key={i} className="srt-pip" style={{background:i<f?color:"#0a1018",borderColor:i<f?color:"#1a2a3a",boxShadow:i<f?`0 0 5px ${color}66`:"none"}}/>
+      ))}
+      <span style={{fontSize:"14px",fontWeight:"700",marginLeft:"7px",color}}>{value}%</span>
+    </div>
+  );
+}
+
+function App() {
+  const [scanning,setScanning]=useState(false);
+  const [step,setStep]=useState(0);
+  const [prog,setProg]=useState(0);
+  const [data,setData]=useState(null);
+  const [error,setError]=useState(null);
+
+  async function runScan(){
+    setScanning(true);setStep(0);setProg(0);setData(null);setError(null);
+    for(let i=0;i<LOAD_STEPS.length;i++){setStep(i);setProg(((i+1)/LOAD_STEPS.length)*100);await new Promise(r=>setTimeout(r,850));}
+    try{
+      const prompt=`You are an expert sector rotation analyst for ${new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'})}. Analyze where institutional money is rotating BETWEEN stock sectors right now. Return ONLY valid JSON (no markdown):
+{"scanTime":"${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}","phase":"EARLY CYCLE or MID CYCLE or LATE CYCLE or CONTRACTION","phaseColor":"#00ff88 or #ffff44 or #ff9900 or #aa66ff","conviction":number,"narrative":"2-3 sentences","rotationFlows":[{"fromEtf":"ETF","fromName":"sector","toEtf":"ETF","toName":"sector","flowBillions":number,"strength":"STRONG or MODERATE or WEAK","reason":"why","color":"#hex"}],"heatmap":[{"etf":"XLK","name":"Technology","rotationScore":number -100 to 100,"signal":"ACCUMULATE or DISTRIBUTE or HOLD or AVOID","weeklyMomentum":number,"rank":number 1-11}],"cyclePositioning":{"currentPhase":"Early or Mid or Late or Defensive","nextPhase":"Early or Mid or Late or Defensive","phaseProgress":number,"rotatingInto":["ETF"],"rotatingOutOf":["ETF"]},"keyInsight":"one sharp insight"}
+4-6 rotation flows. All 11 sectors in heatmap: XLK,XLV,XLF,XLE,XLY,XLI,XLB,XLU,XLRE,XLC,XLP.`;
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2500,tools:[{type:"web_search_20250305",name:"web_search"}],messages:[{role:"user",content:prompt}]})});
+      const raw=await res.json();
+      const text=raw.content?.find(b=>b.type==="text")?.text||"";
+      const m=text.replace(/```json|```/g,"").trim().match(/\{[\s\S]*\}/);
+      if(!m)throw new Error("No JSON returned");
+      setData(JSON.parse(m[0]));
+    }catch(e){setError("Scan error: "+e.message);}
+    finally{setScanning(false);}
+  }
+
+  return (
+    <div className="srt-root">
+      <div className="srt-header">
+        <div>
+          <div className="srt-title">◈ ROTATION FLOW MAP</div>
+          <div className="srt-sub">WHERE IS MONEY MOVING BETWEEN STOCK SECTORS</div>
+        </div>
+        <button className="srt-btn" onClick={runScan} disabled={scanning}>
+          {scanning?<span className="pulse">● SCANNING...</span>:"▶ RUN SCAN"}
+        </button>
+      </div>
+
+      <div className="srt-body">
+        {scanning&&(
+          <div className="srt-loading">
+            {LOAD_STEPS.map((s,i)=>(
+              <div key={i} className="srt-load-step" style={{color:i<step?"#2a4a5a":i===step?"#ffaa00":"#1a2a3a",fontWeight:i===step?"700":"400"}}>
+                {i<step?"✓":i===step?"▶":"○"} {s}
+              </div>
+            ))}
+            <div className="srt-prog-track"><div className="srt-prog-fill" style={{width:`${prog}%`}}/></div>
+            <div style={{fontSize:"12px",color:"#2a4a5a",letterSpacing:"3px"}}>ANALYZING ROTATION VECTORS</div>
+          </div>
+        )}
+
+        {error&&!scanning&&<div style={{padding:"22px",color:"#ff3366",fontSize:"15px"}}>⚠ {error}</div>}
+
+        {!scanning&&!data&&!error&&(
+          <div className="srt-empty">
+            <div style={{fontSize:"40px",marginBottom:"14px",opacity:0.3}}>◈</div>
+            <div style={{fontSize:"14px",letterSpacing:"4px",textTransform:"uppercase"}}>Run scan to map sector rotation flows</div>
+            <div style={{fontSize:"12px",color:"#1a2a3a",marginTop:"12px",letterSpacing:"2px"}}>AI-POWERED · INSTITUTIONAL FLOW ANALYSIS · CYCLE DETECTION</div>
+          </div>
+        )}
+
+        {!scanning&&data&&(
+          <>
+            <div className="srt-verdict">
+              <div>
+                <div className="srt-vlabel">CYCLE PHASE</div>
+                <div className="srt-vphase" style={{color:data.phaseColor}}>{data.phase}</div>
+                <PipMeter value={data.conviction} color={data.phaseColor}/>
+              </div>
+              <div style={{flex:1,minWidth:"200px"}}>
+                <div className="srt-vlabel">ROTATION NARRATIVE</div>
+                <div className="srt-narrative">{data.narrative}</div>
+              </div>
+              {data.keyInsight&&(
+                <div style={{maxWidth:"240px",borderLeft:"1px solid #2a3a4a",paddingLeft:"18px"}}>
+                  <div className="srt-vlabel">KEY SIGNAL</div>
+                  <div style={{fontSize:"13px",color:"#ffaa00",lineHeight:"1.7"}}>{data.keyInsight}</div>
+                </div>
+              )}
+            </div>
+
+            {data.rotationFlows?.length>0&&(
+              <div className="srt-section">
+                <div className="srt-sec-title">ACTIVE ROTATION FLOWS · MONEY MOVING FROM → INTO</div>
+                {data.rotationFlows.map((f,i)=>{
+                  const fc=SC(f.fromEtf),tc=SC(f.toEtf),ac=f.color||"#ffaa00";
+                  return(
+                    <div key={i} className="srt-flow-row">
+                      <div style={{position:"absolute",left:0,top:0,bottom:0,width:"3px",background:ac,opacity:0.8}}/>
+                      <div className="srt-box" style={{borderColor:fc+"55",background:fc+"11"}}>
+                        <div className="srt-setf" style={{color:fc+"88"}}>FROM</div>
+                        <div className="srt-sname" style={{color:fc}}>{f.fromEtf}</div>
+                        <div className="srt-setf" style={{color:fc+"cc"}}>{f.fromName}</div>
+                      </div>
+                      <div className="srt-arrow">
+                        <div className="srt-arrow-line">
+                          <div className="srt-arrow-fill" style={{background:`linear-gradient(90deg,${fc}44,${ac},${tc}44)`,opacity:strOp(f.strength)}}/>
+                          <span style={{fontSize:"16px",color:ac}}>▶</span>
+                        </div>
+                        <div style={{fontSize:"13px",fontWeight:"700",color:ac,marginTop:"4px"}}>~${f.flowBillions?.toFixed(1)}B/wk <span style={{opacity:0.7,fontSize:"11px"}}>{f.strength}</span></div>
+                        <div style={{fontSize:"12px",color:"#8aaaaa",marginTop:"3px"}}>{f.reason}</div>
+                      </div>
+                      <div className="srt-box" style={{borderColor:tc+"55",background:tc+"11"}}>
+                        <div className="srt-setf" style={{color:tc+"88"}}>INTO</div>
+                        <div className="srt-sname" style={{color:tc}}>{f.toEtf}</div>
+                        <div className="srt-setf" style={{color:tc+"cc"}}>{f.toName}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {data.heatmap?.length>0&&(
+              <div className="srt-section">
+                <div className="srt-sec-title">ROTATION SCORE HEATMAP · ALL SECTORS</div>
+                <div className="srt-heatmap">
+                  {[...data.heatmap].sort((a,b)=>b.rotationScore-a.rotationScore).map(s=>{
+                    const col=SC(s.etf),sc=scoreColor(s.rotationScore),isPos=s.rotationScore>=0;
+                    return(
+                      <div key={s.etf} className="srt-heat">
+                        <div className="srt-heat-bg" style={{background:col}}/>
+                        <div className="srt-heat-rank">#{s.rank}</div>
+                        <div className="srt-heat-etf" style={{color:col}}>{s.etf}</div>
+                        <div className="srt-heat-name">{s.name}</div>
+                        <div className="srt-heat-score" style={{color:sc}}>{isPos?"+":""}{s.rotationScore}</div>
+                        <div className="srt-heat-track">
+                          <div className="srt-heat-fill" style={{width:`${Math.abs(s.rotationScore)}%`,background:isPos?`linear-gradient(90deg,${col}44,${col})`:"linear-gradient(90deg,#ff336644,#ff3366)"}}/>
+                        </div>
+                        <div className="srt-heat-sig" style={{color:{ACCUMULATE:"#00ff88",DISTRIBUTE:"#ff3366",HOLD:"#ffaa00",AVOID:"#ff6644"}[s.signal]||"#aaa"}}>{s.signal}</div>
+                        {s.weeklyMomentum!==undefined&&<div style={{fontSize:"11px",color:s.weeklyMomentum>=0?"#44aa66":"#aa3344",marginTop:"4px"}}>{s.weeklyMomentum>=0?"↑":"↓"} {Math.abs(s.weeklyMomentum)}% momentum</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {data.cyclePositioning&&(
+              <div className="srt-section">
+                <div className="srt-sec-title">BUSINESS CYCLE POSITIONING</div>
+                <div style={{background:"#080c12",border:"1px solid #1a2a3a",borderRadius:"3px",padding:"14px 18px",marginBottom:"12px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:"10px"}}>
+                    {CYCLE_ORDER.map(ph=>(
+                      <div key={ph} style={{fontSize:"12px",letterSpacing:"2px",color:ph===data.cyclePositioning.currentPhase?CYCLE_CFG[ph].text:"#3a5a6a",fontWeight:ph===data.cyclePositioning.currentPhase?"700":"400"}}>
+                        {ph===data.cyclePositioning.currentPhase?"▼ ":""}{ph.toUpperCase()}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{background:"#050810",borderRadius:"2px",height:"8px",display:"flex",gap:"2px"}}>
+                    {CYCLE_ORDER.map(ph=>(
+                      <div key={ph} style={{flex:1,background:ph===data.cyclePositioning.currentPhase?CYCLE_CFG[ph].text:"#0d1a24",borderRadius:"1px"}}/>
+                    ))}
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",marginTop:"8px"}}>
+                    <div style={{fontSize:"12px",color:"#7a9aaa"}}>PHASE PROGRESS: <span style={{color:data.phaseColor}}>{data.cyclePositioning.phaseProgress}%</span></div>
+                    <div style={{fontSize:"12px",color:"#7a9aaa"}}>NEXT: <span style={{color:CYCLE_CFG[data.cyclePositioning.nextPhase]?.text||"#888"}}>{data.cyclePositioning.nextPhase?.toUpperCase()}</span></div>
+                  </div>
+                </div>
+                <div className="srt-cycle-grid">
+                  {CYCLE_ORDER.map(phase=>{
+                    const cfg=CYCLE_CFG[phase],isCurr=phase===data.cyclePositioning.currentPhase,secs=SECTORS.filter(s=>s.cycle===phase),rot=data.cyclePositioning;
+                    return(
+                      <div key={phase} className="srt-cycle-col" style={{background:isCurr?cfg.bg:"#050810",borderColor:isCurr?cfg.border:"#1a2a3a",boxShadow:isCurr?`0 0 20px ${cfg.text}18`:"none"}}>
+                        <div className="srt-cycle-ph" style={{color:cfg.text}}>{isCurr?"● ":"○ "}{phase.toUpperCase()}</div>
+                        <div className="srt-cycle-lbl" style={{color:cfg.text}}>{cfg.label}</div>
+                        {secs.map(s=>{
+                          const isIn=rot.rotatingInto?.includes(s.id),isOut=rot.rotatingOutOf?.includes(s.id);
+                          return(
+                            <div key={s.id} className="srt-cycle-sec">
+                              <div className="srt-cycle-dot" style={{background:s.color}}/>
+                              <div style={{flex:1}}>
+                                <div className="srt-cycle-sn" style={{color:s.color}}>{s.name}</div>
+                                <div className="srt-cycle-et">{s.id}</div>
+                              </div>
+                              {isIn&&<div className="srt-badge" style={{background:"#001a0a",color:"#00ff88",border:"1px solid #00aa44"}}>IN↑</div>}
+                              {isOut&&<div className="srt-badge" style={{background:"#1a0008",color:"#ff3366",border:"1px solid #aa0033"}}>OUT↓</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <div className="srt-timestamp">◎ SCAN COMPLETED · {data.scanTime}</div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App/>, document.getElementById("root"));
+</script>
+</body>
+</html>
