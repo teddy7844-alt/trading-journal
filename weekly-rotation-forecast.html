@@ -192,6 +192,11 @@ function App() {
     return () => clearInterval(t);
   }, []);
 
+  function stripCite(text) {
+    if (!text) return text;
+    return text.replace(/<cite[^>]*>/g, '').replace(/<\/cite>/g, '');
+  }
+
   function saveKey() {
     localStorage.setItem("wrf_api_key", keyInput);
     setApiKey(keyInput);
@@ -376,7 +381,7 @@ Include 5-8 items in watchlist (mix of indices like NQ/QQQ/SPX/SPY, sector ETFs 
           {data.lastWeekRecap && (
             <div style={{ background:"#050a06", border:"1px solid #0a1a0a", borderRadius:"3px", padding:"12px 18px", marginBottom:"16px" }}>
               <div style={{ fontSize:"10px", color:"#2a5a3a", letterSpacing:"3px", marginBottom:"6px" }}>LAST WEEK RECAP</div>
-              <div style={{ fontSize:"13px", color:"#8aa88a", lineHeight:"1.8" }}>{data.lastWeekRecap}</div>
+              <div style={{ fontSize:"13px", color:"#8aa88a", lineHeight:"1.8" }}>{stripCite(data.lastWeekRecap)}</div>
             </div>
           )}
 
@@ -436,7 +441,7 @@ Include 5-8 items in watchlist (mix of indices like NQ/QQQ/SPX/SPY, sector ETFs 
           {data.analystNote && (
             <div style={{ background:"#060808", border:"1px solid #ffaa0022", borderLeft:"3px solid #ffaa00", borderRadius:"3px", padding:"14px 18px", marginBottom:"16px" }}>
               <div style={{ fontSize:"10px", color:"#aa7700", letterSpacing:"3px", marginBottom:"7px" }}>◉ ANALYST NOTE · WHAT MOST TRADERS WILL MISS</div>
-              <div style={{ fontSize:"13px", color:"#c8b888", lineHeight:"1.8" }}>{data.analystNote}</div>
+              <div style={{ fontSize:"13px", color:"#c8b888", lineHeight:"1.8" }}>{stripCite(data.analystNote)}</div>
             </div>
           )}
 
