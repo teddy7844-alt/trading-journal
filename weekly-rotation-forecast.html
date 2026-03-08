@@ -16,7 +16,7 @@ body{background:#040608;font-family:'Share Tech Mono',monospace;color:#e8f4e8;}
 ::-webkit-scrollbar-thumb{background:#1a3a2a;border-radius:2px;}
 input:focus{outline:none;}
 @keyframes scanline{0%{top:-10%}100%{top:110%}}
-@keyději pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keydÄji pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 @keyframes glow{0%,100%{text-shadow:0 0 10px #00ff88}50%{text-shadow:0 0 25px #00ff88,0 0 50px #00ff8844}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
@@ -37,7 +37,7 @@ body{background:#040608;font-family:'Share Tech Mono',monospace;color:#e8f4e8;}
 ::-webkit-scrollbar-thumb{background:#1a3a2a;border-radius:2px;}
 input:focus{outline:none;}
 @keyframes scanline{0%{top:-10%}100%{top:110%}}
-@keyději pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keydÄji pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 @keyframes glow{0%,100%{text-shadow:0 0 10px #00ff88}50%{text-shadow:0 0 25px #00ff88,0 0 50px #00ff8844}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
@@ -51,23 +51,23 @@ input:focus{outline:none;}
 const { useState, useEffect } = React;
 
 const LOADING_STEPS = [
-  "PHASE 0 · Fetching real weekly OHLC candle data — Yahoo Finance...",
-  "PHASE 1 · Scanning ETF fund flows & VettaFi rotation data...",
-  "PHASE 1 · Scanning sector money flow & rotation signals...",
-  "PHASE 1 · Reading Unusual Whales options & dark pool flow...",
-  "PHASE 1 · Fetching Barchart options sentiment by sector...",
-  "PHASE 1 · Checking CME FedWatch futures positioning...",
-  "PHASE 1 · Reading AAII investor sentiment survey...",
-  "PHASE 1 · Pulling CFTC COT — commercial vs large spec...",
-  "PHASE 1 · Cross-referencing Barchart COT levels...",
-  "PHASE 1 · Scanning SPX QQQ NQ weekly chart structure...",
-  "PHASE 1 · Scanning XLF XLK XLE XLV sector structures...",
-  "PHASE 1 · Checking macro calendar & upcoming catalysts...",
-  "PHASE 1 · Scanning 13F institutional flow & financial news...",
-  "PHASE 1 · Research complete — compiling all findings...",
-  "PHASE 2 · Classifying sweep phases & cross-referencing COT...",
-  "PHASE 2 · Applying lethal injection & trap filters...",
-  "PHASE 2 · Synthesizing sweep phase map & weekly forecast...",
+  "PHASE 0 Â· Fetching real weekly OHLC candle data â Yahoo Finance...",
+  "PHASE 1 Â· Scanning ETF fund flows & VettaFi rotation data...",
+  "PHASE 1 Â· Scanning sector money flow & rotation signals...",
+  "PHASE 1 Â· Reading Unusual Whales options & dark pool flow...",
+  "PHASE 1 Â· Fetching Barchart options sentiment by sector...",
+  "PHASE 1 Â· Checking CME FedWatch futures positioning...",
+  "PHASE 1 Â· Reading AAII investor sentiment survey...",
+  "PHASE 1 Â· Pulling CFTC COT â commercial vs large spec...",
+  "PHASE 1 Â· Cross-referencing Barchart COT levels...",
+  "PHASE 1 Â· Scanning SPX QQQ NQ weekly chart structure...",
+  "PHASE 1 Â· Scanning XLF XLK XLE XLV sector structures...",
+  "PHASE 1 Â· Checking macro calendar & upcoming catalysts...",
+  "PHASE 1 Â· Scanning 13F institutional flow & financial news...",
+  "PHASE 1 Â· Research complete â compiling all findings...",
+  "PHASE 2 Â· Classifying sweep phases & cross-referencing COT...",
+  "PHASE 2 Â· Applying lethal injection & trap filters...",
+  "PHASE 2 Â· Synthesizing sweep phase map & weekly forecast...",
 ];
 
 const BIAS_COLORS = {
@@ -85,7 +85,7 @@ const CONVICTION_COLORS = {
 };
 
 // ============================================================
-// OHLC PRICE DATA — fetched from Yahoo Finance before AI scan
+// OHLC PRICE DATA â fetched from Yahoo Finance before AI scan
 // Calculates real sweep phases from actual weekly candles
 // ============================================================
 
@@ -94,7 +94,7 @@ const OHLC_TICKERS = [
 ];
 
 async function fetchWeeklyOHLC(ticker) {
-  // Yahoo Finance v8 API — 3 months of weekly data
+  // Yahoo Finance v8 API â 3 months of weekly data
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1wk&range=3mo`;
   try {
     const res = await fetch(url);
@@ -137,7 +137,7 @@ function classifySweepPhase(candles) {
   const currOpen  = curr.open;
   
   // Sweep detection thresholds
-  const sweepThreshold = 0.001; // 0.1% — wick must exceed level by this much
+  const sweepThreshold = 0.001; // 0.1% â wick must exceed level by this much
   
   const sweptHigh = currHigh > prevHigh * (1 + sweepThreshold);
   const sweptLow  = currLow  < prevLow  * (1 - sweepThreshold);
@@ -164,7 +164,7 @@ function classifySweepPhase(candles) {
   let details = '';
   
   if (sfpLow && sfpHigh) {
-    // Both sides swept in same candle — unusual, flag it
+    // Both sides swept in same candle â unusual, flag it
     phase = 'COILING';
     details = `Both sides swept and rejected. W: H${currHigh} L${currLow} vs prev H${prevHigh} L${prevLow}`;
   } else if (sfpLow && prevSweptHigh) {
@@ -187,17 +187,17 @@ function classifySweepPhase(candles) {
     details = `Highs swept (${currHigh}) and holding above prev high (${prevHigh}). Genuine breakout.`;
   } else if (insideBar) {
     phase = 'COILING';
-    details = `Inside bar — coiling within prev range H${prevHigh} L${prevLow}. Breakout imminent.`;
+    details = `Inside bar â coiling within prev range H${prevHigh} L${prevLow}. Breakout imminent.`;
   } else {
     phase = 'NEUTRAL';
     details = `No clear sweep. H${currHigh} L${currLow} vs prev H${prevHigh} L${prevLow}. Close: ${currClose}`;
   }
   
-  // Check if it could be LETHAL INJECTION (SFP at key level — requires context)
+  // Check if it could be LETHAL INJECTION (SFP at key level â requires context)
   // We flag it for the AI to confirm with timeframe analysis
   const potentialLethal = (sfpLow || sfpHigh) && candles.length >= 4;
   if (potentialLethal && (phase === 'ACCUMULATION' || phase === 'DISTRIBUTION')) {
-    details += ' | POTENTIAL LETHAL INJECTION — confirm with monthly/weekly alignment';
+    details += ' | POTENTIAL LETHAL INJECTION â confirm with monthly/weekly alignment';
   }
   
   return {
@@ -228,7 +228,7 @@ async function fetchAllOHLC(onProgress) {
 
 function formatOHLCForPrompt(ohlcData) {
   let text = '=== REAL WEEKLY OHLC PRICE DATA (Yahoo Finance) ===\n';
-  text += 'Sweep phases calculated from actual candle math — use these as ground truth:\n\n';
+  text += 'Sweep phases calculated from actual candle math â use these as ground truth:\n\n';
   
   for (const [ticker, data] of Object.entries(ohlcData)) {
     text += `${ticker}: PHASE=${data.phase}\n`;
@@ -271,7 +271,7 @@ async function searchPhase(searchPrompt, apiKey, onProgress) {
 }
 
 async function synthesizePhase(researchSummary, synthesisPrompt, apiKey) {
-  // Phase 2: no web search — just synthesize research into JSON
+  // Phase 2: no web search â just synthesize research into JSON
   const headers = {
     "Content-Type": "application/json",
     "x-api-key": apiKey,
@@ -319,7 +319,7 @@ async function synthesizePhase(researchSummary, synthesisPrompt, apiKey) {
           if ([',', '}', ']', ':', '\n', '\r'].includes(afterChar) || j >= jsonStr.length) {
             inString = false; fixed += ch; i++; continue;
           } else {
-            // Unescaped quote inside a string — escape it
+            // Unescaped quote inside a string â escape it
             fixed += '\\"'; i++; continue;
           }
         }
@@ -380,13 +380,13 @@ CRITICAL JSON RULES:
 ` + prompt.slice(prompt.indexOf("Output ONLY"));
 
   if (onProgress) onProgress(0);
-  // Fetch real OHLC data first — this runs in parallel with loading animation
+  // Fetch real OHLC data first â this runs in parallel with loading animation
   let ohlcText = '';
   try {
     const ohlcData = await fetchAllOHLC();
     ohlcText = formatOHLCForPrompt(ohlcData);
   } catch(e) {
-    ohlcText = '[OHLC fetch failed — using web search data only]';
+    ohlcText = '[OHLC fetch failed â using web search data only]';
   }
   
   // Inject OHLC data into search prompt
@@ -397,7 +397,38 @@ CRITICAL JSON RULES:
   const compressedResearch = research.length > 10000
     ? research.slice(0, 10000) + "\n[...additional research truncated for token efficiency]"
     : research;
-  return await synthesizePhase(compressedResearch, synthesisPrompt, apiKey);
+  const forecast = await synthesizePhase(compressedResearch, synthesisPrompt, apiKey);
+  
+  // POST-PROCESS: Override liquiditySweepMap with REAL OHLC prices
+  if (forecast.liquiditySweepMap && ohlcData && Object.keys(ohlcData).length > 0) {
+    forecast.liquiditySweepMap = forecast.liquiditySweepMap.map(entry => {
+      const real = ohlcData[entry.ticker];
+      if (!real || !real.lastWeek) return entry;
+      const { high, low, close } = real.lastWeek;
+      const ph = real.priorWeek?.high, pl = real.priorWeek?.low;
+      let recentSweep = entry.recentSweep;
+      if (real.phase === 'ACCUMULATION' && pl)
+        recentSweep = 'Lows swept below prior wk low ' + pl.toFixed(2) + ', closed back above at ' + close.toFixed(2);
+      else if (real.phase === 'DISTRIBUTION' && ph)
+        recentSweep = 'Highs swept above prior wk high ' + ph.toFixed(2) + ', closed back below at ' + close.toFixed(2);
+      else if (real.phase === 'ROUNDTRIP BULLISH')
+        recentSweep = 'Roundtrip: highs swept then lows swept last — close ' + close.toFixed(2);
+      else if (real.phase === 'ROUNDTRIP BEARISH')
+        recentSweep = 'Roundtrip: lows swept then highs swept last — close ' + close.toFixed(2);
+      else if (real.phase === 'COILING' && ph && pl)
+        recentSweep = 'Inside range H' + ph.toFixed(2) + ' L' + pl.toFixed(2) + ', coiling. Close: ' + close.toFixed(2);
+      else if (real.phase === 'BULLISH BREAKOUT' && ph)
+        recentSweep = 'Broke above prior wk high ' + ph.toFixed(2) + ', holding at ' + close.toFixed(2);
+      else if (real.phase === 'BEARISH BREAKDOWN' && pl)
+        recentSweep = 'Broke below prior wk low ' + pl.toFixed(2) + ', holding at ' + close.toFixed(2);
+      else if (ph && pl)
+        recentSweep = 'Range H' + high.toFixed(2) + ' L' + low.toFixed(2) + ' vs prior H' + ph.toFixed(2) + ' L' + pl.toFixed(2) + '. Close: ' + close.toFixed(2);
+      const sig = (real.phase && real.phase !== 'NEUTRAL' && real.phase !== 'INSUFFICIENT DATA') ? real.phase : entry.signal;
+      return { ...entry, recentSweep, signal: sig };
+    });
+  }
+  
+  return forecast;
 }
 
 function ConvictionBar({ level, color }) {
@@ -439,14 +470,14 @@ function WatchCard({ item, rank }) {
           <div style={{ fontSize:"12px", color:"#6a9a7a", lineHeight:"1.7", marginBottom:"8px" }}>{item.reason}</div>
           {sweep && (
             <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginBottom:"4px" }}>
-              <span style={{ fontSize:"9px", color:sweepCol, border:'1px solid '+sweepCol+'44', borderRadius:"2px", padding:"2px 7px", letterSpacing:"1px" }}>⬡ {sweep}</span>
+              <span style={{ fontSize:"9px", color:sweepCol, border:'1px solid '+sweepCol+'44', borderRadius:"2px", padding:"2px 7px", letterSpacing:"1px" }}>â¬¡ {sweep}</span>
               {item.timeframeAlignment && (
-                <span style={{ fontSize:"9px", color:tfCol, border:'1px solid '+tfCol+'44', borderRadius:"2px", padding:"2px 7px", letterSpacing:"1px" }}>⊕ {item.timeframeAlignment}</span>
+                <span style={{ fontSize:"9px", color:tfCol, border:'1px solid '+tfCol+'44', borderRadius:"2px", padding:"2px 7px", letterSpacing:"1px" }}>â {item.timeframeAlignment}</span>
               )}
             </div>
           )}
           {item.liquidityTarget && (
-            <div style={{ fontSize:"11px", color:"#5a8a6a", marginTop:"4px" }}>▶ TARGET: <span style={{ color:"#aaddbb" }}>{item.liquidityTarget}</span></div>
+            <div style={{ fontSize:"11px", color:"#5a8a6a", marginTop:"4px" }}>â¶ TARGET: <span style={{ color:"#aaddbb" }}>{item.liquidityTarget}</span></div>
           )}
         </div>
         <div style={{ minWidth:"110px", textAlign:"right" }}>
@@ -457,7 +488,7 @@ function WatchCard({ item, rank }) {
       </div>
       {item.catalyst && (
         <div style={{ marginTop:"10px", paddingTop:"8px", borderTop:"1px solid #0a2a0a", fontSize:"11px", color:"#ffaa00", letterSpacing:"1px" }}>
-          ⚡ CATALYST: {item.catalyst}
+          â¡ CATALYST: {item.catalyst}
         </div>
       )}
     </div>
@@ -475,7 +506,7 @@ function AvoidCard({ item }) {
       <div style={{ flex:1 }}>
         <div style={{ fontSize:"12px", color:"#8a5a5a", marginBottom:"3px" }}>{item.name}</div>
         <div style={{ fontSize:"11px", color:"#6a4a4a", lineHeight:"1.6" }}>{item.reason}</div>
-        {item.trapWarning && <div style={{ fontSize:"9px", color:trapCol, marginTop:"5px", border:'1px solid '+trapCol+'44', borderRadius:"2px", padding:"2px 7px", display:"inline-block", letterSpacing:"1px" }}>⚠ {item.trapWarning}</div>}
+        {item.trapWarning && <div style={{ fontSize:"9px", color:trapCol, marginTop:"5px", border:'1px solid '+trapCol+'44', borderRadius:"2px", padding:"2px 7px", display:"inline-block", letterSpacing:"1px" }}>â  {item.trapWarning}</div>}
       </div>
       <div style={{ fontSize:"10px", color:"#ff336688", letterSpacing:"2px", border:"1px solid #ff336644", borderRadius:"2px", padding:"3px 8px" }}>AVOID</div>
     </div>
@@ -553,7 +584,7 @@ function App() {
         setProgress((next / LOADING_STEPS.length) * 85); // cap at 85% until done
         return next < LOADING_STEPS.length - 1 ? next : LOADING_STEPS.length - 1;
       });
-    }, 4000); // slower — 4s per step since scan takes longer now
+    }, 4000); // slower â 4s per step since scan takes longer now
 
     const today = new Date();
     const weekStr = today.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
@@ -569,7 +600,7 @@ function App() {
 You understand deeply how institutional money moves through markets via liquidity sweep mechanics. Your entire analysis is filtered through this lens.
 
 === LIQUIDITY SWEEP FRAMEWORK (apply to ALL assets) ===
-Institutional money moves by sweeping liquidity at key structural levels then reversing. The tradeable event is NOT the breakout — it is the FAILURE of the breakout.
+Institutional money moves by sweeping liquidity at key structural levels then reversing. The tradeable event is NOT the breakout â it is the FAILURE of the breakout.
 - SELL-SIDE SWEEP: Price wicks below a key low, closes back above = institutions absorbed sell stops = ACCUMULATION = money flowing IN
 - BUY-SIDE SWEEP: Price wicks above a key high, closes back below = institutions distributed into buy stops = DISTRIBUTION = money flowing OUT
 - SFP (Swing Failure Pattern): Single candle wick through key level, closes back = EARLY WARNING of flow reversal before confirmation
@@ -581,7 +612,7 @@ Institutional money moves by sweeping liquidity at key structural levels then re
 Weekly sweep + rejection + daily confirmation = HIGH conviction (flag as LETHAL INJECTION if SFP present)
 Weekly sweep + rejection only = MEDIUM-HIGH conviction
 Daily sweep + rejection only = BASE conviction
-Daily signal conflicting with weekly = TRAP — put in avoidList with TRAP warning, never in watchlist
+Daily signal conflicting with weekly = TRAP â put in avoidList with TRAP warning, never in watchlist
 
 === SWEEP PHASE CLASSIFICATION ===
 For each major asset/sector, determine its current phase:
@@ -600,18 +631,18 @@ For each major asset/sector, determine its current phase:
 
 === SEARCH INSTRUCTIONS ===
 Run ALL 12 searches before synthesizing. Each provides a distinct data layer:
-1. "ETF fund flows week ${weekStr} site:etf.com OR site:vettafi.com" — ETF inflow/outflow data
-2. "sector rotation money flow ${weekStr}" — which sectors gaining/losing capital
-3. "unusual whales options flow dark pool ${weekStr}" — institutional options & dark pool
-4. "barchart options sentiment put call ratio sector ETF ${weekStr}" — options sentiment by sector
-5. "CME fedwatch fed funds rate probability ${weekStr}" — rate expectations
-6. "AAII sentiment survey bull bear ${weekStr}" — retail sentiment extremes
-7. "CFTC COT report NQ ES futures commercial large speculator net position latest 2026" — COT smart money
-8. "barchart COT commitments of traders NQ ES ${weekStr}" — COT levels & visualization
-9. "SPX QQQ NQ weekly chart key levels support resistance sweep ${weekStr}" — price structure
-10. "XLF XLK XLE XLV XLI XLY sector ETF weekly chart structure ${weekStr}" — sector structure
-11. "macro economic calendar week ${weekAhead} CPI FOMC jobs earnings" — catalysts
-12. "institutional 13F sector positioning financial news ${weekStr} Bloomberg Reuters" — institutional flow
+1. "ETF fund flows week ${weekStr} site:etf.com OR site:vettafi.com" â ETF inflow/outflow data
+2. "sector rotation money flow ${weekStr}" â which sectors gaining/losing capital
+3. "unusual whales options flow dark pool ${weekStr}" â institutional options & dark pool
+4. "barchart options sentiment put call ratio sector ETF ${weekStr}" â options sentiment by sector
+5. "CME fedwatch fed funds rate probability ${weekStr}" â rate expectations
+6. "AAII sentiment survey bull bear ${weekStr}" â retail sentiment extremes
+7. "CFTC COT report NQ ES futures commercial large speculator net position latest 2026" â COT smart money
+8. "barchart COT commitments of traders NQ ES ${weekStr}" â COT levels & visualization
+9. "SPX QQQ NQ weekly chart key levels support resistance sweep ${weekStr}" â price structure
+10. "XLF XLK XLE XLV XLI XLY sector ETF weekly chart structure ${weekStr}" â sector structure
+11. "macro economic calendar week ${weekAhead} CPI FOMC jobs earnings" â catalysts
+12. "institutional 13F sector positioning financial news ${weekStr} Bloomberg Reuters" â institutional flow
 
 After ALL 12 searches, classify each major asset into its sweep phase. Apply the framework above to all data. Output ONLY this JSON (no markdown, no backticks):
 {
@@ -619,8 +650,8 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
   "generatedAt": "${weekStr}",
   "overallBias": "RISK-ON or RISK-OFF or DEFENSIVE or NEUTRAL or ROTATION",
   "biasStrength": "STRONG or MODERATE or WEAK",
-  "oneLiner": "one punchy sentence — lead with the dominant sweep signal",
-  "lastWeekRecap": "2 sentences — specifically note major liquidity sweeps or rejections that occurred last week",
+  "oneLiner": "one punchy sentence â lead with the dominant sweep signal",
+  "lastWeekRecap": "2 sentences â specifically note major liquidity sweeps or rejections that occurred last week",
   "watchlist": [
     {
       "ticker": "QQQ",
@@ -633,7 +664,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
       "reason": "data-backed reason referencing sweep structure and flow data",
       "catalyst": "specific event or data point",
       "keyLevel": "the swept level or key structural zone",
-      "liquidityTarget": "next resting liquidity pool — where price is structurally drawn to"
+      "liquidityTarget": "next resting liquidity pool â where price is structurally drawn to"
     }
   ],
   "avoidList": [
@@ -693,10 +724,10 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
       "interpretation": "does COT confirm or conflict with the current ES sweep structure?"
     },
     "overallCotBias": "BULLISH or BEARISH or MIXED or NEUTRAL",
-    "cotNote": "how COT positioning aligns with sweep structure — call out lethal injection if commercials net long + weekly low sweep confirmed"
+    "cotNote": "how COT positioning aligns with sweep structure â call out lethal injection if commercials net long + weekly low sweep confirmed"
   },
   "flowSources": ["actual sources found and used"],
-  "analystNote": "2-3 sentences — lead with the single most important liquidity sweep signal this week. What structural move is setting up that most traders will completely miss? Where is institutional money actually positioned right now based on sweep evidence?"
+  "analystNote": "2-3 sentences â lead with the single most important liquidity sweep signal this week. What structural move is setting up that most traders will completely miss? Where is institutional money actually positioned right now based on sweep evidence?"
 }
 
 5-8 watchlist items (mix NQ/QQQ/SPX/SPY, sector ETFs, high-conviction plays). 3-5 avoid items with trap warnings. All 11 sectors in sectorRanking with sweep phase. 5-8 items in liquiditySweepMap. 4-6 key events. Be SPECIFIC with price levels and sweep structure. Use real data from searches.`;
@@ -726,16 +757,16 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
       <div style={{ background:"#050a06", borderBottom:"1px solid #0a2a0a", padding:"14px 22px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"10px", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(0,255,136,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,0.02) 1px,transparent 1px)", backgroundSize:"30px 30px", pointerEvents:"none" }}/>
         <div style={{ position:"relative" }}>
-          <div style={{ fontSize:"10px", color:"#2a5a3a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"4px" }}>TEDDY7844 · TRADING INTELLIGENCE</div>
+          <div style={{ fontSize:"10px", color:"#2a5a3a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"4px" }}>TEDDY7844 Â· TRADING INTELLIGENCE</div>
           <div style={{ fontSize:"20px", fontWeight:"700", color:"#00ff88", letterSpacing:"3px", textTransform:"uppercase", fontFamily:"'Rajdhani',sans-serif" }}>
-            ◉ WEEKLY ROTATION FORECAST
+            â WEEKLY ROTATION FORECAST
           </div>
-          <div style={{ fontSize:"11px", color:"#3a6a4a", letterSpacing:"3px", marginTop:"3px" }}>WHERE IS MONEY MOVING THIS WEEK · SUNDAY PREP BRIEF</div>
+          <div style={{ fontSize:"11px", color:"#3a6a4a", letterSpacing:"3px", marginTop:"3px" }}>WHERE IS MONEY MOVING THIS WEEK Â· SUNDAY PREP BRIEF</div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:"12px", position:"relative" }}>
-          {data && <div style={{ fontSize:"11px", color:"#00ff88", letterSpacing:"2px", border:"1px solid #00ff8844", borderRadius:"2px", padding:"4px 10px" }}>● LIVE DATA</div>}
+          {data && <div style={{ fontSize:"11px", color:"#00ff88", letterSpacing:"2px", border:"1px solid #00ff8844", borderRadius:"2px", padding:"4px 10px" }}>â LIVE DATA</div>}
           <button onClick={runScan} disabled={scanning} style={{ background:scanning?"#0a0f0a":"linear-gradient(135deg,#002a10,#004a1a)", border:`1px solid ${scanning?"#1a3a1a":"#00aa44"}`, borderRadius:"3px", color:scanning?"#2a5a3a":"#00ff88", fontFamily:"'Share Tech Mono',monospace", fontSize:"13px", fontWeight:"700", letterSpacing:"2px", padding:"10px 26px", cursor:scanning?"not-allowed":"pointer", textTransform:"uppercase", boxShadow:scanning?"none":"0 0 20px #00ff8822" }}>
-            {scanning ? <span>● SCANNING<span className="blink">_</span></span> : "▶ RUN WEEKLY SCAN"}
+            {scanning ? <span>â SCANNING<span className="blink">_</span></span> : "â¶ RUN WEEKLY SCAN"}
           </button>
         </div>
       </div>
@@ -746,9 +777,9 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
         <input type="password" placeholder="sk-ant-api03-..." value={keyInput} onChange={e=>setKeyInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveKey()}
           style={{ flex:1, minWidth:"260px", background:"#030606", border:"1px solid #0a2a0a", borderRadius:"3px", color:"#00ff88", fontFamily:"'Share Tech Mono',monospace", fontSize:"13px", padding:"7px 12px" }}/>
         <button onClick={saveKey} style={{ background:"#001a08", border:"1px solid #00aa44", borderRadius:"3px", color:"#00ff88", fontFamily:"'Share Tech Mono',monospace", fontSize:"11px", fontWeight:"700", letterSpacing:"1px", padding:"7px 14px", cursor:"pointer", whiteSpace:"nowrap" }}>
-          {keySaved ? "✓ SAVED" : "SAVE"}
+          {keySaved ? "â SAVED" : "SAVE"}
         </button>
-        <span style={{ fontSize:"10px", color:"#1a3a1a", letterSpacing:"1px" }}>Saved in browser · never sent anywhere except Anthropic</span>
+        <span style={{ fontSize:"10px", color:"#1a3a1a", letterSpacing:"1px" }}>Saved in browser Â· never sent anywhere except Anthropic</span>
       </div>
 
       {/* LOADING */}
@@ -757,7 +788,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           <div style={{ fontSize:"12px", color:"#2a6a3a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"24px", textAlign:"center" }}>GATHERING MARKET INTELLIGENCE</div>
           {LOADING_STEPS.map((s,i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"10px", opacity:i>step?0.2:1, transition:"opacity 0.3s" }}>
-              <span style={{ color:i<step?"#00ff88":i===step?"#ffaa00":"#1a3a1a", fontSize:"12px", minWidth:"14px" }}>{i<step?"✓":i===step?"▶":"○"}</span>
+              <span style={{ color:i<step?"#00ff88":i===step?"#ffaa00":"#1a3a1a", fontSize:"12px", minWidth:"14px" }}>{i<step?"â":i===step?"â¶":"â"}</span>
               <span style={{ fontSize:"12px", color:i<step?"#2a5a3a":i===step?"#ffaa00":"#1a3a1a", letterSpacing:"1px" }}>{s}</span>
             </div>
           ))}
@@ -766,16 +797,16 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           </div>
           <div style={{ textAlign:"center", fontSize:"11px", color:"#1a4a2a", letterSpacing:"3px", display:"flex", justifyContent:"center", gap:"20px" }}>
             <span>SEARCHING 8 DATA SOURCES</span>
-            {iterCount > 0 && <span style={{color:"#2a6a4a"}}>· API LOOP {iterCount}/15</span>}
+            {iterCount > 0 && <span style={{color:"#2a6a4a"}}>Â· API LOOP {iterCount}/15</span>}
           </div>
         </div>
       )}
 
-      {error && !scanning && <div style={{ padding:"22px", color:"#ff3366", fontSize:"13px" }}>⚠ {error}</div>}
+      {error && !scanning && <div style={{ padding:"22px", color:"#ff3366", fontSize:"13px" }}>â  {error}</div>}
 
       {!scanning && !data && !error && (
         <div style={{ textAlign:"center", padding:"80px 20px", color:"#1a4a2a" }}>
-          <div style={{ fontSize:"48px", marginBottom:"16px", opacity:0.3 }}>◉</div>
+          <div style={{ fontSize:"48px", marginBottom:"16px", opacity:0.3 }}>â</div>
           <div style={{ fontSize:"14px", letterSpacing:"4px", textTransform:"uppercase", color:"#2a6a3a" }}>WEEKLY ROTATION INTELLIGENCE</div>
           <div style={{ fontSize:"11px", color:"#1a3a2a", marginTop:"10px", letterSpacing:"2px", lineHeight:"1.8" }}>
             Run on Sunday evening for your weekly trade prep<br/>
@@ -813,21 +844,21 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
             {/* WATCHLIST */}
             <div style={{ gridColumn:"1 / -1" }}>
               <div style={{ fontSize:"11px", color:"#2a6a3a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a2a0a", display:"flex", alignItems:"center", gap:"10px" }}>
-                <span>▶ THIS WEEK WATCHLIST</span>
-                <span style={{ color:"#1a3a1a" }}>· TICKERS TO FOCUS ON</span>
+                <span>â¶ THIS WEEK WATCHLIST</span>
+                <span style={{ color:"#1a3a1a" }}>Â· TICKERS TO FOCUS ON</span>
               </div>
               {data.watchlist?.map((item, i) => <WatchCard key={item.ticker} item={item} rank={i+1}/>)}
             </div>
 
             {/* AVOID LIST */}
             <div>
-              <div style={{ fontSize:"11px", color:"#6a2a2a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #2a0a0a" }}>✕ AVOID THIS WEEK</div>
+              <div style={{ fontSize:"11px", color:"#6a2a2a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #2a0a0a" }}>â AVOID THIS WEEK</div>
               {data.avoidList?.map(item => <AvoidCard key={item.ticker} item={item}/>)}
             </div>
 
             {/* SECTOR RANKING */}
             <div>
-              <div style={{ fontSize:"11px", color:"#2a5a6a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a1a2a" }}>◈ SECTOR FLOW RANKING</div>
+              <div style={{ fontSize:"11px", color:"#2a5a6a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a1a2a" }}>â SECTOR FLOW RANKING</div>
               <div style={{ display:"grid", gap:"5px" }}>
                 {data.sectorRanking?.sort((a,b)=>a.rank-b.rank).map(s => {
                   const isIn = s.flow?.includes("IN");
@@ -856,7 +887,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           {data.liquiditySweepMap?.length > 0 && (
             <div style={{ marginBottom:"16px" }}>
               <div style={{ fontSize:"11px", color:"#00cc66", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #003322" }}>
-                ◎ LIQUIDITY SWEEP MAP · INSTITUTIONAL FLOW STRUCTURE
+                â LIQUIDITY SWEEP MAP Â· INSTITUTIONAL FLOW STRUCTURE
               </div>
               <div style={{ display:"grid", gap:"8px" }}>
                 {data.liquiditySweepMap.map((item, i) => {
@@ -871,7 +902,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
                     <div key={i} style={{ background:"#050e08", border:'1px solid '+sigCol+'22', borderLeft:`3px solid ${sigCol}66`, borderRadius:"3px", padding:"12px 16px", display:"grid", gridTemplateColumns:"80px 1fr 1fr auto", gap:"12px", alignItems:"start" }}>
                       <div>
                         <div style={{ fontSize:"15px", fontWeight:"700", color:"#c8f0d8", fontFamily:"'Rajdhani',sans-serif", letterSpacing:"1px" }}>{item.ticker}</div>
-                        <div style={{ fontSize:"9px", color:rejCol, letterSpacing:"2px", marginTop:"3px" }}>{item.rejected === "YES" ? "✓ REJECTED" : "✗ NO REJECT"}</div>
+                        <div style={{ fontSize:"9px", color:rejCol, letterSpacing:"2px", marginTop:"3px" }}>{item.rejected === "YES" ? "â REJECTED" : "â NO REJECT"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize:"9px", color:"#2a5a3a", letterSpacing:"2px", marginBottom:"4px" }}>RECENT SWEEP</div>
@@ -895,7 +926,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           {data.sweepPhaseMap?.length > 0 && (
             <div style={{ marginBottom:"16px" }}>
               <div style={{ fontSize:"11px", color:"#3a6a5a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a2a1a" }}>
-                ◈ LIQUIDITY SWEEP PHASE MAP · INSTITUTIONAL POSITIONING
+                â LIQUIDITY SWEEP PHASE MAP Â· INSTITUTIONAL POSITIONING
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px,1fr))", gap:"8px" }}>
                 {data.sweepPhaseMap.map((item, i) => {
@@ -916,14 +947,14 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
                     : phase === "DISTRIBUTION"                    ? "#1a0800"
                     : phase === "ROUNDTRIP BEARISH"               ? "#1a0008"
                     : "#080808";
-                  const phaseIcon = phase === "LETHAL INJECTION"    ? "⚡"
-                    : phase === "ROUNDTRIP BULLISH"                 ? "◎"
-                    : phase === "ACCUMULATION"                      ? "▲"
-                    : phase === "SFP WARNING"                       ? "⚠"
-                    : phase === "COILING"                           ? "◈"
-                    : phase === "DISTRIBUTION"                      ? "▼"
-                    : phase === "ROUNDTRIP BEARISH"                 ? "◎"
-                    : "·";
+                  const phaseIcon = phase === "LETHAL INJECTION"    ? "â¡"
+                    : phase === "ROUNDTRIP BULLISH"                 ? "â"
+                    : phase === "ACCUMULATION"                      ? "â²"
+                    : phase === "SFP WARNING"                       ? "â "
+                    : phase === "COILING"                           ? "â"
+                    : phase === "DISTRIBUTION"                      ? "â¼"
+                    : phase === "ROUNDTRIP BEARISH"                 ? "â"
+                    : "Â·";
                   return (
                     <div key={i} style={{ background:phaseBg, border:'1px solid '+col+'33', borderTop:'2px solid '+col, borderRadius:"3px", padding:"10px 12px" }}>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"6px" }}>
@@ -933,7 +964,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
                       <div style={{ fontSize:"9px", fontWeight:"700", color:col, letterSpacing:"2px", marginBottom:"6px", lineHeight:"1.3" }}>{phase}</div>
                       <div style={{ display:"flex", gap:"4px", marginBottom:"6px", flexWrap:"wrap" }}>
                         <span style={{ fontSize:"8px", color: item.rejected === "YES" ? "#00ff88" : "#ff6644", border:`1px solid ${item.rejected === "YES" ? "#00ff8844" : "#ff664444"}`, borderRadius:"2px", padding:"1px 5px" }}>
-                          {item.rejected === "YES" ? "✓ REJECTED" : "✗ NO REJECT"}
+                          {item.rejected === "YES" ? "â REJECTED" : "â NO REJECT"}
                         </span>
                         <span style={{ fontSize:"8px", color: item.weeklyConfirmed === "YES" ? "#00ff88" : item.weeklyConfirmed === "PENDING" ? "#ffaa00" : "#ff6644", border:"1px solid #1a3a2a", borderRadius:"2px", padding:"1px 5px" }}>
                           WKY: {item.weeklyConfirmed || "?"}
@@ -950,13 +981,13 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
 
           {/* KEY EVENTS */}
           <div style={{ marginBottom:"16px" }}>
-            <div style={{ fontSize:"11px", color:"#2a4a6a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a1a2a" }}>⚡ KEY EVENTS THIS WEEK · FLOW MOVERS</div>
+            <div style={{ fontSize:"11px", color:"#2a4a6a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a1a2a" }}>â¡ KEY EVENTS THIS WEEK Â· FLOW MOVERS</div>
             {data.keyEvents?.map((e,i) => <EventCard key={i} event={e}/>)}
           </div>
 
           {/* SCENARIOS */}
           <div style={{ marginBottom:"16px" }}>
-            <div style={{ fontSize:"11px", color:"#4a4a2a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #1a1a0a" }}>◐ WEEK SCENARIOS</div>
+            <div style={{ fontSize:"11px", color:"#4a4a2a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #1a1a0a" }}>â WEEK SCENARIOS</div>
             <div style={{ display:"flex", gap:"10px", flexWrap:"wrap" }}>
               {data.scenarios?.map((s,i) => <ScenarioCard key={i} scenario={s}/>)}
             </div>
@@ -966,7 +997,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           {data.cot && (
             <div style={{ marginBottom:"16px" }}>
               <div style={{ fontSize:"11px", color:"#6a4a7a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #2a0a3a" }}>
-                ◈ COT SMART MONEY POSITIONING · CFTC DATA
+                â COT SMART MONEY POSITIONING Â· CFTC DATA
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"10px" }}>
                 {[["NQ FUTURES", data.cot.nq], ["ES / SPX FUTURES", data.cot.es]].map(([label, cot]) => {
@@ -981,12 +1012,12 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
                         <div style={{ background:"#060410", borderRadius:"2px", padding:"8px 10px", border:"1px solid #1a0a2a" }}>
                           <div style={{ fontSize:"9px", color:"#4a2a6a", letterSpacing:"2px", marginBottom:"4px" }}>COMMERCIALS</div>
                           <div style={{ fontSize:"16px", fontWeight:"700", color:commCol, fontFamily:"'Rajdhani',sans-serif" }}>{cot.commercialNet}</div>
-                          <div style={{ fontSize:"9px", color:"#3a2a4a", marginTop:"3px" }}>SMART MONEY → FOLLOW</div>
+                          <div style={{ fontSize:"9px", color:"#3a2a4a", marginTop:"3px" }}>SMART MONEY â FOLLOW</div>
                         </div>
                         <div style={{ background:"#060410", borderRadius:"2px", padding:"8px 10px", border:"1px solid #1a0a2a" }}>
                           <div style={{ fontSize:"9px", color:"#4a2a6a", letterSpacing:"2px", marginBottom:"4px" }}>LARGE SPECS</div>
                           <div style={{ fontSize:"16px", fontWeight:"700", color:specCol, fontFamily:"'Rajdhani',sans-serif" }}>{cot.largeSpecNet}</div>
-                          <div style={{ fontSize:"9px", color:cot.largeSpecExtreme==="YES"?"#ffaa00":"#3a2a4a", marginTop:"3px" }}>{cot.largeSpecExtreme==="YES"?"⚠ EXTREME — FADE":"MODERATE POSITIONING"}</div>
+                          <div style={{ fontSize:"9px", color:cot.largeSpecExtreme==="YES"?"#ffaa00":"#3a2a4a", marginTop:"3px" }}>{cot.largeSpecExtreme==="YES"?"â  EXTREME â FADE":"MODERATE POSITIONING"}</div>
                         </div>
                       </div>
                       <div style={{ fontSize:"10px", letterSpacing:"2px", fontWeight:"700", color:sigCol, border:'1px solid '+sigCol+'44', borderRadius:"2px", padding:"4px 10px", display:"inline-block", marginBottom:"8px" }}>{cot.signal}</div>
@@ -1007,7 +1038,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           {/* ANALYST NOTE */}
           {data.analystNote && (
             <div style={{ background:"#060808", border:"1px solid #ffaa0022", borderLeft:"3px solid #ffaa00", borderRadius:"3px", padding:"14px 18px", marginBottom:"16px" }}>
-              <div style={{ fontSize:"10px", color:"#aa7700", letterSpacing:"3px", marginBottom:"7px" }}>◉ ANALYST NOTE · WHAT MOST TRADERS WILL MISS</div>
+              <div style={{ fontSize:"10px", color:"#aa7700", letterSpacing:"3px", marginBottom:"7px" }}>â ANALYST NOTE Â· WHAT MOST TRADERS WILL MISS</div>
               <div style={{ fontSize:"13px", color:"#c8b888", lineHeight:"1.8" }}>{stripCite(data.analystNote)}</div>
             </div>
           )}
@@ -1025,7 +1056,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           )}
 
           <div style={{ fontSize:"10px", color:"#1a3a2a", textAlign:"right", paddingTop:"10px", borderTop:"1px solid #0a1a0a", letterSpacing:"2px" }}>
-            ◉ GENERATED {data.generatedAt} · FOR WEEK OF {data.weekOf}
+            â GENERATED {data.generatedAt} Â· FOR WEEK OF {data.weekOf}
           </div>
         </div>
       )}
