@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -23,395 +22,390 @@ input:focus { outline: none; border-color: #0066aa !important; }
 const { useState, useEffect } = React;
 
 const SECTORS = [
-{ name:“Technology”,       etf:“XLK”,  color:”#00d4ff” },
-{ name:“Healthcare”,       etf:“XLV”,  color:”#00ff88” },
-{ name:“Financials”,       etf:“XLF”,  color:”#ffaa00” },
-{ name:“Energy”,           etf:“XLE”,  color:”#ff6600” },
-{ name:“Consumer Disc.”,   etf:“XLY”,  color:”#ff3366” },
-{ name:“Industrials”,      etf:“XLI”,  color:”#bb88ff” },
-{ name:“Materials”,        etf:“XLB”,  color:”#44ffaa” },
-{ name:“Utilities”,        etf:“XLU”,  color:”#ffdd44” },
-{ name:“Real Estate”,      etf:“XLRE”, color:”#ff88aa” },
-{ name:“Comm. Services”,   etf:“XLC”,  color:”#88ddff” },
-{ name:“Consumer Staples”, etf:“XLP”,  color:”#aaffdd” },
+  { name:"Technology",       etf:"XLK",  color:"#00d4ff" },
+  { name:"Healthcare",       etf:"XLV",  color:"#00ff88" },
+  { name:"Financials",       etf:"XLF",  color:"#ffaa00" },
+  { name:"Energy",           etf:"XLE",  color:"#ff6600" },
+  { name:"Consumer Disc.",   etf:"XLY",  color:"#ff3366" },
+  { name:"Industrials",      etf:"XLI",  color:"#bb88ff" },
+  { name:"Materials",        etf:"XLB",  color:"#44ffaa" },
+  { name:"Utilities",        etf:"XLU",  color:"#ffdd44" },
+  { name:"Real Estate",      etf:"XLRE", color:"#ff88aa" },
+  { name:"Comm. Services",   etf:"XLC",  color:"#88ddff" },
+  { name:"Consumer Staples", etf:"XLP",  color:"#aaffdd" },
 ];
 const CRYPTO = [
-{ name:“Bitcoin”,        ticker:“BTC” },
-{ name:“Ethereum”,       ticker:“ETH” },
-{ name:“Solana”,         ticker:“SOL” },
-{ name:“XRP”,            ticker:“XRP” },
-{ name:“Altcoin Basket”, ticker:“ALT” },
+  { name:"Bitcoin",        ticker:"BTC" },
+  { name:"Ethereum",       ticker:"ETH" },
+  { name:"Solana",         ticker:"SOL" },
+  { name:"XRP",            ticker:"XRP" },
+  { name:"Altcoin Basket", ticker:"ALT" },
 ];
 const LOADING_STEPS = [
-“Fetching ETF flow data…”,
-“Scanning institutional positioning…”,
-“Analyzing macro indicators…”,
-“Processing crypto dominance…”,
-“Synthesizing sector verdict…”,
+  "Fetching ETF flow data...",
+  "Scanning institutional positioning...",
+  "Analyzing macro indicators...",
+  "Processing crypto dominance...",
+  "Synthesizing sector verdict...",
 ];
-const TABS = [“Money Flow”,“Sectors”,“Crypto”,“Macro”];
+const TABS = ["Money Flow","Sectors","Crypto","Macro"];
 
 const S = {
-root:       { fontFamily:”‘Courier New’,monospace”, background:”#080c10”, color:”#ffffff”, minHeight:“100vh”, fontSize:“15px” },
-header:     { background:”#0a1420”, borderBottom:“1px solid #1a3a5a”, padding:“14px 22px”, display:“flex”, alignItems:“center”, justifyContent:“space-between”, flexWrap:“wrap”, gap:“10px” },
-hTitle:     { fontSize:“18px”, fontWeight:“700”, color:”#00d4ff”, letterSpacing:“3px”, textTransform:“uppercase” },
-hSub:       { fontSize:“12px”, color:”#8aaacc”, letterSpacing:“2px”, marginTop:“3px” },
-liveTag:    { background:”#001a2a”, border:“1px solid #003a5a”, borderRadius:“2px”, padding:“5px 12px”, fontSize:“12px”, color:”#00aaff”, letterSpacing:“2px” },
-scanBtn:    { background:“linear-gradient(135deg,#003366,#004488)”, border:“1px solid #0066aa”, borderRadius:“3px”, color:”#00d4ff”, fontFamily:”‘Courier New’,monospace”, fontSize:“14px”, fontWeight:“700”, letterSpacing:“2px”, padding:“10px 28px”, cursor:“pointer”, textTransform:“uppercase” },
-scanBtnOff: { background:“linear-gradient(135deg,#330011,#440022)”, border:“1px solid #aa0044”, color:”#ff3366”, cursor:“not-allowed” },
-keyBar:     { background:”#060e18”, borderBottom:“1px solid #1a3a5a”, padding:“10px 22px”, display:“flex”, alignItems:“center”, gap:“12px”, flexWrap:“wrap” },
-keyLabel:   { fontSize:“11px”, color:”#8aaacc”, letterSpacing:“2px”, textTransform:“uppercase”, whiteSpace:“nowrap” },
-keyInput:   { flex:1, minWidth:“260px”, background:”#050a10”, border:“1px solid #1a3a5a”, borderRadius:“3px”, color:”#ffffff”, fontFamily:”‘Courier New’,monospace”, fontSize:“13px”, padding:“8px 12px” },
-keyBtn:     { background:”#001a0a”, border:“1px solid #00aa44”, borderRadius:“3px”, color:”#00ff88”, fontFamily:”‘Courier New’,monospace”, fontSize:“12px”, fontWeight:“700”, letterSpacing:“1px”, padding:“8px 14px”, cursor:“pointer”, whiteSpace:“nowrap” },
-keyNote:    { fontSize:“10px”, color:”#2a5a3a”, letterSpacing:“1px” },
-loadWrap:   { padding:“50px 20px”, textAlign:“center” },
-loadStep:   { fontSize:“14px”, letterSpacing:“2px”, marginBottom:“10px” },
-progBar:    { background:”#0a1420”, border:“1px solid #1a3a5a”, borderRadius:“2px”, height:“5px”, margin:“22px auto”, maxWidth:“420px”, overflow:“hidden” },
-progFill:   { background:“linear-gradient(90deg,#003a6a,#00d4ff)”, height:“100%”, transition:“width 0.6s ease” },
-tabs:       { display:“flex”, borderBottom:“1px solid #1a3a5a”, padding:“0 22px”, overflowX:“auto” },
-tab:        { padding:“12px 20px”, cursor:“pointer”, fontSize:“13px”, letterSpacing:“2px”, textTransform:“uppercase”, color:”#6a9aaa”, background:“none”, border:“none”, borderBottom:“2px solid transparent”, fontFamily:”‘Courier New’,monospace”, whiteSpace:“nowrap” },
-tabOn:      { color:”#00d4ff”, borderBottom:“2px solid #00d4ff” },
-body:       { padding:“18px 22px” },
-grid:       { display:“grid”, gridTemplateColumns:“repeat(auto-fill,minmax(300px,1fr))”, gap:“12px” },
-card:       { background:”#0a1420”, border:“1px solid #1a3a5a”, borderRadius:“3px”, padding:“16px”, position:“relative”, overflow:“hidden” },
-accent:     { position:“absolute”, top:0, left:0, width:“3px”, height:“100%” },
-cardHdr:    { display:“flex”, justifyContent:“space-between”, alignItems:“flex-start”, marginBottom:“12px” },
-cardName:   { fontSize:“15px”, fontWeight:“700”, color:”#ffffff” },
-cardEtf:    { fontSize:“12px”, color:”#8aaacc”, marginTop:“3px” },
-flowRow:    { display:“flex”, justifyContent:“space-between”, alignItems:“center”, marginBottom:“8px” },
-flowLbl:    { fontSize:“12px”, color:”#8aaacc” },
-flowVal:    { fontSize:“16px”, fontWeight:“700” },
-flowBar:    { height:“4px”, borderRadius:“2px”, marginBottom:“10px”, background:”#0d1a28”, overflow:“hidden” },
-tickers:    { display:“flex”, gap:“6px”, flexWrap:“wrap”, marginTop:“10px” },
-ticker:     { background:”#0d1a28”, border:“1px solid #2a4a6a”, borderRadius:“2px”, padding:“3px 8px”, fontSize:“12px”, color:”#ccdde8” },
-verdictBox: { background:”#0a1420”, border:“1px solid #1a3a5a”, borderRadius:“3px”, padding:“18px 22px”, marginBottom:“16px”, display:“flex”, alignItems:“center”, gap:“24px”, flexWrap:“wrap” },
-vLabel:     { fontSize:“11px”, color:”#8aaacc”, letterSpacing:“2px”, textTransform:“uppercase”, marginBottom:“5px” },
-vText:      { fontSize:“20px”, fontWeight:“700” },
-pips:       { display:“flex”, gap:“4px”, alignItems:“center” },
-pip:        { width:“16px”, height:“16px”, borderRadius:“2px”, border:“1px solid #1a3a5a” },
-secTitle:   { fontSize:“12px”, color:”#8aaacc”, letterSpacing:“3px”, textTransform:“uppercase”, marginBottom:“14px”, paddingBottom:“7px”, borderBottom:“1px solid #1a3a5a” },
-macroGrid:  { display:“grid”, gridTemplateColumns:“repeat(auto-fill,minmax(240px,1fr))”, gap:“12px” },
-macroCard:  { background:”#0a1420”, border:“1px solid #1a3a5a”, borderRadius:“3px”, padding:“16px” },
-cryptoGrid: { display:“grid”, gridTemplateColumns:“repeat(auto-fill,minmax(280px,1fr))”, gap:“12px”, marginBottom:“18px” },
-domBar:     { background:”#0a1420”, border:“1px solid #1a3a5a”, borderRadius:“3px”, padding:“18px”, marginBottom:“18px” },
-domTrack:   { background:”#050a10”, borderRadius:“2px”, height:“28px”, overflow:“hidden”, display:“flex”, marginTop:“10px” },
-domSeg:     { height:“100%”, display:“flex”, alignItems:“center”, justifyContent:“center”, fontSize:“12px”, fontWeight:“700” },
-narrative:  { background:”#070b12”, border:“1px solid #1a3a5a”, borderRadius:“3px”, padding:“14px 18px”, fontSize:“14px”, lineHeight:“1.8”, color:”#ffffff”, marginBottom:“18px” },
-empty:      { textAlign:“center”, padding:“70px 20px”, color:”#4a7a9a” },
-timestamp:  { fontSize:“12px”, color:”#4a7a9a”, marginTop:“18px”, textAlign:“right” },
+  root:       { fontFamily:"'Courier New',monospace", background:"#080c10", color:"#ffffff", minHeight:"100vh", fontSize:"15px" },
+  header:     { background:"#0a1420", borderBottom:"1px solid #1a3a5a", padding:"14px 22px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"10px" },
+  hTitle:     { fontSize:"18px", fontWeight:"700", color:"#00d4ff", letterSpacing:"3px", textTransform:"uppercase" },
+  hSub:       { fontSize:"12px", color:"#8aaacc", letterSpacing:"2px", marginTop:"3px" },
+  liveTag:    { background:"#001a2a", border:"1px solid #003a5a", borderRadius:"2px", padding:"5px 12px", fontSize:"12px", color:"#00aaff", letterSpacing:"2px" },
+  scanBtn:    { background:"linear-gradient(135deg,#003366,#004488)", border:"1px solid #0066aa", borderRadius:"3px", color:"#00d4ff", fontFamily:"'Courier New',monospace", fontSize:"14px", fontWeight:"700", letterSpacing:"2px", padding:"10px 28px", cursor:"pointer", textTransform:"uppercase" },
+  scanBtnOff: { background:"linear-gradient(135deg,#330011,#440022)", border:"1px solid #aa0044", color:"#ff3366", cursor:"not-allowed" },
+  keyBar:     { background:"#060e18", borderBottom:"1px solid #1a3a5a", padding:"10px 22px", display:"flex", alignItems:"center", gap:"12px", flexWrap:"wrap" },
+  keyLabel:   { fontSize:"11px", color:"#8aaacc", letterSpacing:"2px", textTransform:"uppercase", whiteSpace:"nowrap" },
+  keyInput:   { flex:1, minWidth:"260px", background:"#050a10", border:"1px solid #1a3a5a", borderRadius:"3px", color:"#ffffff", fontFamily:"'Courier New',monospace", fontSize:"13px", padding:"8px 12px" },
+  keyBtn:     { background:"#001a0a", border:"1px solid #00aa44", borderRadius:"3px", color:"#00ff88", fontFamily:"'Courier New',monospace", fontSize:"12px", fontWeight:"700", letterSpacing:"1px", padding:"8px 14px", cursor:"pointer", whiteSpace:"nowrap" },
+  keyNote:    { fontSize:"10px", color:"#2a5a3a", letterSpacing:"1px" },
+  loadWrap:   { padding:"50px 20px", textAlign:"center" },
+  loadStep:   { fontSize:"14px", letterSpacing:"2px", marginBottom:"10px" },
+  progBar:    { background:"#0a1420", border:"1px solid #1a3a5a", borderRadius:"2px", height:"5px", margin:"22px auto", maxWidth:"420px", overflow:"hidden" },
+  progFill:   { background:"linear-gradient(90deg,#003a6a,#00d4ff)", height:"100%", transition:"width 0.6s ease" },
+  tabs:       { display:"flex", borderBottom:"1px solid #1a3a5a", padding:"0 22px", overflowX:"auto" },
+  tab:        { padding:"12px 20px", cursor:"pointer", fontSize:"13px", letterSpacing:"2px", textTransform:"uppercase", color:"#6a9aaa", background:"none", border:"none", borderBottom:"2px solid transparent", fontFamily:"'Courier New',monospace", whiteSpace:"nowrap" },
+  tabOn:      { color:"#00d4ff", borderBottom:"2px solid #00d4ff" },
+  body:       { padding:"18px 22px" },
+  grid:       { display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:"12px" },
+  card:       { background:"#0a1420", border:"1px solid #1a3a5a", borderRadius:"3px", padding:"16px", position:"relative", overflow:"hidden" },
+  accent:     { position:"absolute", top:0, left:0, width:"3px", height:"100%" },
+  cardHdr:    { display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"12px" },
+  cardName:   { fontSize:"15px", fontWeight:"700", color:"#ffffff" },
+  cardEtf:    { fontSize:"12px", color:"#8aaacc", marginTop:"3px" },
+  flowRow:    { display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"8px" },
+  flowLbl:    { fontSize:"12px", color:"#8aaacc" },
+  flowVal:    { fontSize:"16px", fontWeight:"700" },
+  flowBar:    { height:"4px", borderRadius:"2px", marginBottom:"10px", background:"#0d1a28", overflow:"hidden" },
+  tickers:    { display:"flex", gap:"6px", flexWrap:"wrap", marginTop:"10px" },
+  ticker:     { background:"#0d1a28", border:"1px solid #2a4a6a", borderRadius:"2px", padding:"3px 8px", fontSize:"12px", color:"#ccdde8" },
+  verdictBox: { background:"#0a1420", border:"1px solid #1a3a5a", borderRadius:"3px", padding:"18px 22px", marginBottom:"16px", display:"flex", alignItems:"center", gap:"24px", flexWrap:"wrap" },
+  vLabel:     { fontSize:"11px", color:"#8aaacc", letterSpacing:"2px", textTransform:"uppercase", marginBottom:"5px" },
+  vText:      { fontSize:"20px", fontWeight:"700" },
+  pips:       { display:"flex", gap:"4px", alignItems:"center" },
+  pip:        { width:"16px", height:"16px", borderRadius:"2px", border:"1px solid #1a3a5a" },
+  secTitle:   { fontSize:"12px", color:"#8aaacc", letterSpacing:"3px", textTransform:"uppercase", marginBottom:"14px", paddingBottom:"7px", borderBottom:"1px solid #1a3a5a" },
+  macroGrid:  { display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))", gap:"12px" },
+  macroCard:  { background:"#0a1420", border:"1px solid #1a3a5a", borderRadius:"3px", padding:"16px" },
+  cryptoGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:"12px", marginBottom:"18px" },
+  domBar:     { background:"#0a1420", border:"1px solid #1a3a5a", borderRadius:"3px", padding:"18px", marginBottom:"18px" },
+  domTrack:   { background:"#050a10", borderRadius:"2px", height:"28px", overflow:"hidden", display:"flex", marginTop:"10px" },
+  domSeg:     { height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"12px", fontWeight:"700" },
+  narrative:  { background:"#070b12", border:"1px solid #1a3a5a", borderRadius:"3px", padding:"14px 18px", fontSize:"14px", lineHeight:"1.8", color:"#ffffff", marginBottom:"18px" },
+  empty:      { textAlign:"center", padding:"70px 20px", color:"#4a7a9a" },
+  timestamp:  { fontSize:"12px", color:"#4a7a9a", marginTop:"18px", textAlign:"right" },
 };
 
 function biasStyle(b) {
-return { borderRadius:“2px”, padding:“3px 10px”, fontSize:“11px”, fontWeight:“700”, letterSpacing:“2px”,
-background: b===“BULLISH”?”#001a0a”:b===“BEARISH”?”#1a0008”:”#0a0a1a”,
-color:      b===“BULLISH”?”#00ff88”:b===“BEARISH”?”#ff3366”:”#aaaaff”,
-border:     `1px solid ${b==="BULLISH"?"#00aa44":b==="BEARISH"?"#aa0033":"#4444aa"}` };
+  return { borderRadius:"2px", padding:"3px 10px", fontSize:"11px", fontWeight:"700", letterSpacing:"2px",
+    background: b==="BULLISH"?"#001a0a":b==="BEARISH"?"#1a0008":"#0a0a1a",
+    color:      b==="BULLISH"?"#00ff88":b==="BEARISH"?"#ff3366":"#aaaaff",
+    border:     `1px solid ${b==="BULLISH"?"#00aa44":b==="BEARISH"?"#aa0033":"#4444aa"}` };
 }
 
 function PipMeter({ val, color }) {
-const f = Math.round((val/100)*10);
-return (
-<div style={S.pips}>
-{Array.from({length:10}).map((_,i)=>(
-<div key={i} style={{…S.pip, background:i<f?color:”#0a1420”, borderColor:i<f?color:”#1a3a5a”, boxShadow:i<f?`0 0 6px ${color}55`:“none”}}/>
-))}
-<span style={{fontSize:“15px”, color, marginLeft:“8px”, fontWeight:“700”}}>{val}%</span>
-</div>
-);
+  const f = Math.round((val/100)*10);
+  return (
+    <div style={S.pips}>
+      {Array.from({length:10}).map((_,i)=>(
+        <div key={i} style={{...S.pip, background:i<f?color:"#0a1420", borderColor:i<f?color:"#1a3a5a", boxShadow:i<f?`0 0 6px ${color}55`:"none"}}/>
+      ))}
+      <span style={{fontSize:"15px", color, marginLeft:"8px", fontWeight:"700"}}>{val}%</span>
+    </div>
+  );
 }
 
 function FlowCard({ sector, data }) {
-const isIn = data.weeklyFlow > 0;
-return (
-<div style={S.card}>
-<div style={{…S.accent, background:sector.color}}/>
-<div style={S.cardHdr}>
-<div>
-<div style={S.cardName}>{sector.name}</div>
-<div style={S.cardEtf}>{sector.etf}</div>
-</div>
-<div style={biasStyle(data.bias)}>{data.bias}</div>
-</div>
-<div style={S.flowRow}>
-<span style={S.flowLbl}>WEEKLY FLOW</span>
-<span style={{…S.flowVal, color:isIn?”#00ff88”:”#ff3366”}}>{isIn?”+”:””}${data.weeklyFlow.toFixed(1)}B</span>
-</div>
-<div style={S.flowBar}><div style={{width:`${Math.min(100,(Math.abs(data.weeklyFlow)/5)*100)}%`,height:“100%”,background:isIn?”#00ff88”:”#ff3366”}}/></div>
-<div style={S.flowRow}><span style={S.flowLbl}>INST. POSITIONING</span><span style={{fontSize:“14px”,color:”#ffffff”}}>{data.instPos}</span></div>
-<div style={S.flowRow}><span style={S.flowLbl}>MOMENTUM</span><span style={{fontSize:“14px”,color:data.momentum>0?”#00ff88”:”#ff3366”}}>{data.momentum>0?“↑”:“↓”} {Math.abs(data.momentum)}%</span></div>
-<div style={S.tickers}>{data.topTickers?.map(t=><span key={t} style={S.ticker}>{t}</span>)}</div>
-</div>
-);
+  const isIn = data.weeklyFlow > 0;
+  return (
+    <div style={S.card}>
+      <div style={{...S.accent, background:sector.color}}/>
+      <div style={S.cardHdr}>
+        <div>
+          <div style={S.cardName}>{sector.name}</div>
+          <div style={S.cardEtf}>{sector.etf}</div>
+        </div>
+        <div style={biasStyle(data.bias)}>{data.bias}</div>
+      </div>
+      <div style={S.flowRow}>
+        <span style={S.flowLbl}>WEEKLY FLOW</span>
+        <span style={{...S.flowVal, color:isIn?"#00ff88":"#ff3366"}}>{isIn?"+":""}${data.weeklyFlow.toFixed(1)}B</span>
+      </div>
+      <div style={S.flowBar}><div style={{width:`${Math.min(100,(Math.abs(data.weeklyFlow)/5)*100)}%`,height:"100%",background:isIn?"#00ff88":"#ff3366"}}/></div>
+      <div style={S.flowRow}><span style={S.flowLbl}>INST. POSITIONING</span><span style={{fontSize:"14px",color:"#ffffff"}}>{data.instPos}</span></div>
+      <div style={S.flowRow}><span style={S.flowLbl}>MOMENTUM</span><span style={{fontSize:"14px",color:data.momentum>0?"#00ff88":"#ff3366"}}>{data.momentum>0?"↑":"↓"} {Math.abs(data.momentum)}%</span></div>
+      <div style={S.tickers}>{data.topTickers?.map(t=><span key={t} style={S.ticker}>{t}</span>)}</div>
+    </div>
+  );
 }
 
 function App() {
-const [tab,      setTab]      = useState(0);
-const [scanning, setScanning] = useState(false);
-const [step,     setStep]     = useState(0);
-const [progress, setProgress] = useState(0);
-const [data,     setData]     = useState(null);
-const [error,    setError]    = useState(null);
-const [apiKey,   setApiKey]   = useState(() => localStorage.getItem(“srt_api_key”) || “”);
-const [keyInput, setKeyInput] = useState(() => localStorage.getItem(“srt_api_key”) || “”);
-const [keySaved, setKeySaved] = useState(false);
+  const [tab,      setTab]      = useState(0);
+  const [scanning, setScanning] = useState(false);
+  const [step,     setStep]     = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [data,     setData]     = useState(null);
+  const [error,    setError]    = useState(null);
+  const [apiKey,   setApiKey]   = useState(() => localStorage.getItem("srt_api_key") || "");
+  const [keyInput, setKeyInput] = useState(() => localStorage.getItem("srt_api_key") || "");
+  const [keySaved, setKeySaved] = useState(false);
 
-function saveKey() {
-localStorage.setItem(“srt_api_key”, keyInput);
-setApiKey(keyInput);
-setKeySaved(true);
-setTimeout(() => setKeySaved(false), 2000);
-}
-
-async function runScan() {
-if (!apiKey) { setError(“Enter your Anthropic API key above first.”); return; }
-setScanning(true); setStep(0); setProgress(0); setData(null); setError(null);
-for (let i=0; i<LOADING_STEPS.length; i++) {
-setStep(i); setProgress(((i+1)/LOADING_STEPS.length)*100);
-await new Promise(r=>setTimeout(r,900));
-}
-try {
-const prompt = `You are a professional sector rotation analyst. Analyze current money flows across S&P 500 sectors, crypto, and macro. Return ONLY valid JSON (no markdown, no backticks): {"scanTime":"${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})} - Live Scan","verdict":{"summary":"one sentence","regime":"RISK-ON or RISK-OFF or ROTATION or DEFENSIVE","conviction":number 0-100,"color":"#00ff88 or #ff3366 or #ffaa00 or #aa88ff"},"narrative":"2-3 sentences","sectors":[{"etf":"XLK","weeklyFlow":number,"bias":"BULLISH or BEARISH or NEUTRAL","instPos":"Overweight or Underweight or Neutral","momentum":number,"topTickers":["T1","T2","T3"],"note":"insight"}],"crypto":[{"ticker":"BTC","weeklyFlow":number,"bias":"BULLISH or BEARISH or NEUTRAL","momentum":number,"note":"insight"}],"btcDominance":number,"ethShare":number,"altShare":number,"macro":[{"metric":"Fed Funds Rate","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"10Y Treasury","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"DXY (Dollar)","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"VIX","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Gold (XAU)","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Crude Oil (WTI)","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Credit Spreads","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Yield Curve","value":"x","change":"x","direction":"up or down or flat","note":"x"}]} Include all 11 sectors (XLK,XLV,XLF,XLE,XLY,XLI,XLB,XLU,XLRE,XLC,XLP) and 5 crypto (BTC,ETH,SOL,XRP,ALT).`;
-
-```
-  const headers = {
-    "Content-Type": "application/json",
-    "x-api-key": apiKey,
-    "anthropic-version": "2023-06-01",
-    "anthropic-dangerous-direct-browser-access": "true"
-  };
-  const tools = [{ type: "web_search_20250305", name: "web_search" }];
-  let messages = [{ role: "user", content: prompt }];
-  let parsed = null;
-
-  for (let i = 0; i < 8; i++) {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST", headers,
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, tools, messages })
-    });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
-    const raw = await res.json();
-    messages.push({ role: "assistant", content: raw.content });
-
-    if (raw.stop_reason === "end_turn") {
-      const text = raw.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
-      const m = text.replace(/```json|```/g,"").trim().match(/\{[\s\S]*\}/);
-      if (!m) throw new Error("No JSON in response");
-      parsed = JSON.parse(m[0]); break;
-    }
-    const toolUseBlocks = raw.content.filter(b=>b.type==="tool_use");
-    if (toolUseBlocks.length === 0) {
-      const text = raw.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
-      const m = text.replace(/```json|```/g,"").trim().match(/\{[\s\S]*\}/);
-      if (!m) throw new Error("No JSON in response");
-      parsed = JSON.parse(m[0]); break;
-    }
-    messages.push({ role: "user", content: toolUseBlocks.map(block => ({
-      type: "tool_result", tool_use_id: block.id, content: block.content || ""
-    }))});
+  function saveKey() {
+    localStorage.setItem("srt_api_key", keyInput);
+    setApiKey(keyInput);
+    setKeySaved(true);
+    setTimeout(() => setKeySaved(false), 2000);
   }
-  if (!parsed) throw new Error("No data returned");
-  setData(parsed);
-} catch(e) {
-  setError("Scan failed: " + e.message);
-} finally {
-  setScanning(false);
-}
-```
 
-}
+  async function runScan() {
+    if (!apiKey) { setError("Enter your Anthropic API key above first."); return; }
+    setScanning(true); setStep(0); setProgress(0); setData(null); setError(null);
+    for (let i=0; i<LOADING_STEPS.length; i++) {
+      setStep(i); setProgress(((i+1)/LOADING_STEPS.length)*100);
+      await new Promise(r=>setTimeout(r,900));
+    }
+    try {
+      const prompt = `You are a professional sector rotation analyst. Analyze current money flows across S&P 500 sectors, crypto, and macro. Return ONLY valid JSON (no markdown, no backticks):
+{"scanTime":"${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})} - Live Scan","verdict":{"summary":"one sentence","regime":"RISK-ON or RISK-OFF or ROTATION or DEFENSIVE","conviction":number 0-100,"color":"#00ff88 or #ff3366 or #ffaa00 or #aa88ff"},"narrative":"2-3 sentences","sectors":[{"etf":"XLK","weeklyFlow":number,"bias":"BULLISH or BEARISH or NEUTRAL","instPos":"Overweight or Underweight or Neutral","momentum":number,"topTickers":["T1","T2","T3"],"note":"insight"}],"crypto":[{"ticker":"BTC","weeklyFlow":number,"bias":"BULLISH or BEARISH or NEUTRAL","momentum":number,"note":"insight"}],"btcDominance":number,"ethShare":number,"altShare":number,"macro":[{"metric":"Fed Funds Rate","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"10Y Treasury","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"DXY (Dollar)","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"VIX","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Gold (XAU)","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Crude Oil (WTI)","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Credit Spreads","value":"x","change":"x","direction":"up or down or flat","note":"x"},{"metric":"Yield Curve","value":"x","change":"x","direction":"up or down or flat","note":"x"}]}
+Include all 11 sectors (XLK,XLV,XLF,XLE,XLY,XLI,XLB,XLU,XLRE,XLC,XLP) and 5 crypto (BTC,ETH,SOL,XRP,ALT).`;
 
-const sm={}, cm={};
-data?.sectors?.forEach(s=>sm[s.etf]=s);
-data?.crypto?.forEach(c=>cm[c.ticker]=c);
+      const headers = {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      };
+      const tools = [{ type: "web_search_20250305", name: "web_search" }];
+      let messages = [{ role: "user", content: prompt }];
+      let parsed = null;
 
-return (
-<div style={S.root}>
+      for (let i = 0; i < 8; i++) {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST", headers,
+          body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, tools, messages })
+        });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+        const raw = await res.json();
+        messages.push({ role: "assistant", content: raw.content });
 
-```
-  {/* HEADER */}
-  <div style={S.header}>
-    <div>
-      <div style={S.hTitle}>⬡ SECTOR ROTATION TERMINAL</div>
-      <div style={S.hSub}>MONEY FLOW · INSTITUTIONAL POSITIONING · MACRO REGIME</div>
-    </div>
-    <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
-      {data && <div style={S.liveTag}>● LIVE</div>}
-      <button style={{...S.scanBtn,...(scanning?S.scanBtnOff:{})}} onClick={runScan} disabled={scanning}>
-        {scanning ? "● SCANNING..." : "▶ RUN SCAN"}
-      </button>
-    </div>
-  </div>
+        if (raw.stop_reason === "end_turn") {
+          const text = raw.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+          const m = text.replace(/```json|```/g,"").trim().match(/\{[\s\S]*\}/);
+          if (!m) throw new Error("No JSON in response");
+          parsed = JSON.parse(m[0]); break;
+        }
+        const toolUseBlocks = raw.content.filter(b=>b.type==="tool_use");
+        if (toolUseBlocks.length === 0) {
+          const text = raw.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+          const m = text.replace(/```json|```/g,"").trim().match(/\{[\s\S]*\}/);
+          if (!m) throw new Error("No JSON in response");
+          parsed = JSON.parse(m[0]); break;
+        }
+        messages.push({ role: "user", content: toolUseBlocks.map(block => ({
+          type: "tool_result", tool_use_id: block.id, content: block.content || ""
+        }))});
+      }
+      if (!parsed) throw new Error("No data returned");
+      setData(parsed);
+    } catch(e) {
+      setError("Scan failed: " + e.message);
+    } finally {
+      setScanning(false);
+    }
+  }
 
-  {/* API KEY BAR */}
-  <div style={S.keyBar}>
-    <span style={S.keyLabel}>API KEY</span>
-    <input
-      style={S.keyInput}
-      type="password"
-      placeholder="sk-ant-api03-..."
-      value={keyInput}
-      onChange={e=>setKeyInput(e.target.value)}
-      onKeyDown={e=>e.key==="Enter"&&saveKey()}
-    />
-    <button style={S.keyBtn} onClick={saveKey}>
-      {keySaved ? "✓ SAVED" : "SAVE"}
-    </button>
-    <span style={S.keyNote}>Saved in browser · never sent anywhere except Anthropic</span>
-  </div>
+  const sm={}, cm={};
+  data?.sectors?.forEach(s=>sm[s.etf]=s);
+  data?.crypto?.forEach(c=>cm[c.ticker]=c);
 
-  {/* LOADING */}
-  {scanning && (
-    <div style={S.loadWrap}>
-      {LOADING_STEPS.map((s,i)=>(
-        <div key={i} style={{...S.loadStep, color:i<step?"#3a5a6a":i===step?"#00d4ff":"#1a3a5a", fontWeight:i===step?"700":"400"}}>
-          {i<step?"✓":i===step?"▶":"○"} {s}
+  return (
+    <div style={S.root}>
+
+      {/* HEADER */}
+      <div style={S.header}>
+        <div>
+          <div style={S.hTitle}>⬡ SECTOR ROTATION TERMINAL</div>
+          <div style={S.hSub}>MONEY FLOW · INSTITUTIONAL POSITIONING · MACRO REGIME</div>
         </div>
-      ))}
-      <div style={S.progBar}><div style={{...S.progFill,width:`${progress}%`}}/></div>
-      <div style={{fontSize:"13px",color:"#4a7a9a",letterSpacing:"2px"}}>AI-POWERED ANALYSIS IN PROGRESS</div>
-    </div>
-  )}
-
-  {error && !scanning && <div style={{padding:"22px",color:"#ff3366",fontSize:"15px"}}>⚠ {error}</div>}
-
-  {!scanning && !data && !error && (
-    <div style={S.empty}>
-      <div style={{fontSize:"42px",marginBottom:"14px",opacity:0.4}}>⬡</div>
-      <div style={{fontSize:"15px",letterSpacing:"3px",textTransform:"uppercase"}}>Enter API key above then press Run Scan</div>
-      <div style={{fontSize:"13px",color:"#2a4a6a",marginTop:"10px",letterSpacing:"2px"}}>Get your key at console.anthropic.com</div>
-    </div>
-  )}
-
-  {!scanning && data && (
-    <>
-      <div style={{padding:"14px 22px 0"}}>
-        <div style={S.verdictBox}>
-          <div>
-            <div style={S.vLabel}>MARKET REGIME</div>
-            <div style={{...S.vText,color:data.verdict.color}}>{data.verdict.regime}</div>
-          </div>
-          <div style={{flex:1}}>
-            <div style={S.vLabel}>VERDICT</div>
-            <div style={{fontSize:"15px",color:"#ffffff",lineHeight:"1.5"}}>{data.verdict.summary}</div>
-          </div>
-          <div>
-            <div style={S.vLabel}>CONVICTION</div>
-            <PipMeter val={data.verdict.conviction} color={data.verdict.color}/>
-          </div>
+        <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
+          {data && <div style={S.liveTag}>● LIVE</div>}
+          <button style={{...S.scanBtn,...(scanning?S.scanBtnOff:{})}} onClick={runScan} disabled={scanning}>
+            {scanning ? "● SCANNING..." : "▶ RUN SCAN"}
+          </button>
         </div>
-        {data.narrative && <div style={S.narrative}>{data.narrative}</div>}
       </div>
 
-      <div style={S.tabs}>
-        {TABS.map((t,i)=>(
-          <button key={t} style={{...S.tab,...(tab===i?S.tabOn:{})}} onClick={()=>setTab(i)}>{t}</button>
-        ))}
+      {/* API KEY BAR */}
+      <div style={S.keyBar}>
+        <span style={S.keyLabel}>API KEY</span>
+        <input
+          style={S.keyInput}
+          type="password"
+          placeholder="sk-ant-api03-..."
+          value={keyInput}
+          onChange={e=>setKeyInput(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&saveKey()}
+        />
+        <button style={S.keyBtn} onClick={saveKey}>
+          {keySaved ? "✓ SAVED" : "SAVE"}
+        </button>
+        <span style={S.keyNote}>Saved in browser · never sent anywhere except Anthropic</span>
       </div>
 
-      <div style={S.body}>
-
-        {tab===0 && (
-          <>
-            <div style={S.secTitle}>ETF FLOW MONITOR · ALL SECTORS</div>
-            <div style={S.grid}>
-              {SECTORS.map(sec=>{const d=sm[sec.etf];if(!d)return null;return <FlowCard key={sec.etf} sector={sec} data={d}/>;  })}
+      {/* LOADING */}
+      {scanning && (
+        <div style={S.loadWrap}>
+          {LOADING_STEPS.map((s,i)=>(
+            <div key={i} style={{...S.loadStep, color:i<step?"#3a5a6a":i===step?"#00d4ff":"#1a3a5a", fontWeight:i===step?"700":"400"}}>
+              {i<step?"✓":i===step?"▶":"○"} {s}
             </div>
-          </>
-        )}
+          ))}
+          <div style={S.progBar}><div style={{...S.progFill,width:`${progress}%`}}/></div>
+          <div style={{fontSize:"13px",color:"#4a7a9a",letterSpacing:"2px"}}>AI-POWERED ANALYSIS IN PROGRESS</div>
+        </div>
+      )}
 
-        {tab===1 && (
-          <>
-            <div style={S.secTitle}>SECTOR ANALYSIS · INSTITUTIONAL BIAS</div>
-            <div style={{display:"grid",gap:"8px"}}>
-              {SECTORS.map(sec=>{
-                const d=sm[sec.etf]; if(!d)return null; const isIn=d.weeklyFlow>0;
-                return (
-                  <div key={sec.etf} style={{...S.card,padding:"12px 16px"}}>
-                    <div style={{...S.accent,background:sec.color}}/>
-                    <div style={{display:"flex",alignItems:"center",gap:"14px",flexWrap:"wrap"}}>
-                      <div style={{minWidth:"52px",fontSize:"15px",color:sec.color,fontWeight:"700"}}>{sec.etf}</div>
-                      <div style={{minWidth:"160px",fontSize:"14px",color:"#ffffff"}}>{sec.name}</div>
-                      <div style={{minWidth:"90px"}}><div style={{...biasStyle(d.bias),display:"inline-block"}}>{d.bias}</div></div>
-                      <div style={{minWidth:"100px",fontSize:"16px",fontWeight:"700",color:isIn?"#00ff88":"#ff3366"}}>{isIn?"+":""}${d.weeklyFlow.toFixed(1)}B</div>
-                      <div style={{flex:1,minWidth:"80px",background:"#050a10",height:"8px",borderRadius:"2px",overflow:"hidden"}}>
-                        <div style={{width:`${Math.min(100,(Math.abs(d.weeklyFlow)/5)*100)}%`,height:"100%",background:isIn?"#00ff88":"#ff3366"}}/>
-                      </div>
-                      <div style={{fontSize:"12px",color:"#ccdde8",minWidth:"200px",textAlign:"right"}}>{d.note}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
+      {error && !scanning && <div style={{padding:"22px",color:"#ff3366",fontSize:"15px"}}>⚠ {error}</div>}
 
-        {tab===2 && (
-          <>
-            <div style={S.secTitle}>CRYPTO FLOW ANALYSIS</div>
-            <div style={S.domBar}>
-              <div style={S.vLabel}>MARKET CAP DOMINANCE</div>
-              <div style={S.domTrack}>
-                <div style={{...S.domSeg,width:`${data.btcDominance}%`,background:"#f7931a",color:"#000"}}>BTC {data.btcDominance}%</div>
-                <div style={{...S.domSeg,width:`${data.ethShare}%`,background:"#627eea",color:"#fff"}}>ETH {data.ethShare}%</div>
-                <div style={{...S.domSeg,width:`${data.altShare}%`,background:"#1a3a5a",color:"#ccdde8"}}>ALT {data.altShare}%</div>
+      {!scanning && !data && !error && (
+        <div style={S.empty}>
+          <div style={{fontSize:"42px",marginBottom:"14px",opacity:0.4}}>⬡</div>
+          <div style={{fontSize:"15px",letterSpacing:"3px",textTransform:"uppercase"}}>Enter API key above then press Run Scan</div>
+          <div style={{fontSize:"13px",color:"#2a4a6a",marginTop:"10px",letterSpacing:"2px"}}>Get your key at console.anthropic.com</div>
+        </div>
+      )}
+
+      {!scanning && data && (
+        <>
+          <div style={{padding:"14px 22px 0"}}>
+            <div style={S.verdictBox}>
+              <div>
+                <div style={S.vLabel}>MARKET REGIME</div>
+                <div style={{...S.vText,color:data.verdict.color}}>{data.verdict.regime}</div>
               </div>
-              <div style={{fontSize:"13px",color:"#ccdde8",marginTop:"10px"}}>
-                {data.btcDominance>55?"⚠ HIGH BTC DOMINANCE — Altseason unlikely.":data.btcDominance<45?"● LOW BTC DOMINANCE — Altseason possible.":"◎ NEUTRAL DOMINANCE — Mixed signals."}
+              <div style={{flex:1}}>
+                <div style={S.vLabel}>VERDICT</div>
+                <div style={{fontSize:"15px",color:"#ffffff",lineHeight:"1.5"}}>{data.verdict.summary}</div>
+              </div>
+              <div>
+                <div style={S.vLabel}>CONVICTION</div>
+                <PipMeter val={data.verdict.conviction} color={data.verdict.color}/>
               </div>
             </div>
-            <div style={S.cryptoGrid}>
-              {CRYPTO.map(coin=>{
-                const d=cm[coin.ticker]; if(!d)return null; const isIn=d.weeklyFlow>0;
-                const cols={BTC:"#f7931a",ETH:"#627eea",SOL:"#9945ff",XRP:"#346aa9",ALT:"#00ffcc"};
-                return (
-                  <div key={coin.ticker} style={S.card}>
-                    <div style={{...S.accent,background:cols[coin.ticker]||"#00d4ff"}}/>
-                    <div style={S.cardHdr}>
-                      <div>
-                        <div style={{...S.cardName,fontSize:"17px",color:cols[coin.ticker]}}>{coin.ticker}</div>
-                        <div style={S.cardEtf}>{coin.name}</div>
-                      </div>
-                      <div style={biasStyle(d.bias)}>{d.bias}</div>
-                    </div>
-                    <div style={S.flowRow}><span style={S.flowLbl}>WEEKLY FLOW</span><span style={{...S.flowVal,color:isIn?"#00ff88":"#ff3366"}}>{isIn?"+":""}${d.weeklyFlow.toFixed(1)}B</span></div>
-                    <div style={S.flowBar}><div style={{width:`${Math.min(100,(Math.abs(d.weeklyFlow)/3)*100)}%`,height:"100%",background:isIn?"#00ff88":"#ff3366"}}/></div>
-                    <div style={S.flowRow}><span style={S.flowLbl}>MOMENTUM</span><span style={{fontSize:"14px",color:d.momentum>0?"#00ff88":"#ff3366"}}>{d.momentum>0?"↑":"↓"} {Math.abs(d.momentum)}%</span></div>
-                    {d.note&&<div style={{fontSize:"13px",color:"#ccdde8",marginTop:"10px",lineHeight:"1.6"}}>{d.note}</div>}
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
+            {data.narrative && <div style={S.narrative}>{data.narrative}</div>}
+          </div>
 
-        {tab===3 && (
-          <>
-            <div style={S.secTitle}>MACRO CONDITIONS · RATE & RISK ENVIRONMENT</div>
-            <div style={S.macroGrid}>
-              {data.macro?.map(m=>(
-                <div key={m.metric} style={S.macroCard}>
-                  <div style={{fontSize:"12px",color:"#8aaacc",marginBottom:"5px"}}>{m.metric}</div>
-                  <div style={{fontSize:"26px",fontWeight:"700",color:m.direction==="up"?"#ff6644":m.direction==="down"?"#00ff88":"#ffffff"}}>{m.value}</div>
-                  <div style={{fontSize:"14px",marginTop:"5px",color:m.direction==="up"?"#ff6644":m.direction==="down"?"#00ff88":"#8aaacc"}}>{m.direction==="up"?"▲":m.direction==="down"?"▼":"—"} {m.change}</div>
-                  <div style={{fontSize:"13px",color:"#ccdde8",marginTop:"10px",lineHeight:"1.6"}}>{m.note}</div>
+          <div style={S.tabs}>
+            {TABS.map((t,i)=>(
+              <button key={t} style={{...S.tab,...(tab===i?S.tabOn:{})}} onClick={()=>setTab(i)}>{t}</button>
+            ))}
+          </div>
+
+          <div style={S.body}>
+
+            {tab===0 && (
+              <>
+                <div style={S.secTitle}>ETF FLOW MONITOR · ALL SECTORS</div>
+                <div style={S.grid}>
+                  {SECTORS.map(sec=>{const d=sm[sec.etf];if(!d)return null;return <FlowCard key={sec.etf} sector={sec} data={d}/>;  })}
                 </div>
-              ))}
-            </div>
-          </>
-        )}
+              </>
+            )}
 
-        <div style={S.timestamp}>◎ SCAN COMPLETED · {data.scanTime}</div>
-      </div>
-    </>
-  )}
-</div>
-```
+            {tab===1 && (
+              <>
+                <div style={S.secTitle}>SECTOR ANALYSIS · INSTITUTIONAL BIAS</div>
+                <div style={{display:"grid",gap:"8px"}}>
+                  {SECTORS.map(sec=>{
+                    const d=sm[sec.etf]; if(!d)return null; const isIn=d.weeklyFlow>0;
+                    return (
+                      <div key={sec.etf} style={{...S.card,padding:"12px 16px"}}>
+                        <div style={{...S.accent,background:sec.color}}/>
+                        <div style={{display:"flex",alignItems:"center",gap:"14px",flexWrap:"wrap"}}>
+                          <div style={{minWidth:"52px",fontSize:"15px",color:sec.color,fontWeight:"700"}}>{sec.etf}</div>
+                          <div style={{minWidth:"160px",fontSize:"14px",color:"#ffffff"}}>{sec.name}</div>
+                          <div style={{minWidth:"90px"}}><div style={{...biasStyle(d.bias),display:"inline-block"}}>{d.bias}</div></div>
+                          <div style={{minWidth:"100px",fontSize:"16px",fontWeight:"700",color:isIn?"#00ff88":"#ff3366"}}>{isIn?"+":""}${d.weeklyFlow.toFixed(1)}B</div>
+                          <div style={{flex:1,minWidth:"80px",background:"#050a10",height:"8px",borderRadius:"2px",overflow:"hidden"}}>
+                            <div style={{width:`${Math.min(100,(Math.abs(d.weeklyFlow)/5)*100)}%`,height:"100%",background:isIn?"#00ff88":"#ff3366"}}/>
+                          </div>
+                          <div style={{fontSize:"12px",color:"#ccdde8",minWidth:"200px",textAlign:"right"}}>{d.note}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
-);
+            {tab===2 && (
+              <>
+                <div style={S.secTitle}>CRYPTO FLOW ANALYSIS</div>
+                <div style={S.domBar}>
+                  <div style={S.vLabel}>MARKET CAP DOMINANCE</div>
+                  <div style={S.domTrack}>
+                    <div style={{...S.domSeg,width:`${data.btcDominance}%`,background:"#f7931a",color:"#000"}}>BTC {data.btcDominance}%</div>
+                    <div style={{...S.domSeg,width:`${data.ethShare}%`,background:"#627eea",color:"#fff"}}>ETH {data.ethShare}%</div>
+                    <div style={{...S.domSeg,width:`${data.altShare}%`,background:"#1a3a5a",color:"#ccdde8"}}>ALT {data.altShare}%</div>
+                  </div>
+                  <div style={{fontSize:"13px",color:"#ccdde8",marginTop:"10px"}}>
+                    {data.btcDominance>55?"⚠ HIGH BTC DOMINANCE — Altseason unlikely.":data.btcDominance<45?"● LOW BTC DOMINANCE — Altseason possible.":"◎ NEUTRAL DOMINANCE — Mixed signals."}
+                  </div>
+                </div>
+                <div style={S.cryptoGrid}>
+                  {CRYPTO.map(coin=>{
+                    const d=cm[coin.ticker]; if(!d)return null; const isIn=d.weeklyFlow>0;
+                    const cols={BTC:"#f7931a",ETH:"#627eea",SOL:"#9945ff",XRP:"#346aa9",ALT:"#00ffcc"};
+                    return (
+                      <div key={coin.ticker} style={S.card}>
+                        <div style={{...S.accent,background:cols[coin.ticker]||"#00d4ff"}}/>
+                        <div style={S.cardHdr}>
+                          <div>
+                            <div style={{...S.cardName,fontSize:"17px",color:cols[coin.ticker]}}>{coin.ticker}</div>
+                            <div style={S.cardEtf}>{coin.name}</div>
+                          </div>
+                          <div style={biasStyle(d.bias)}>{d.bias}</div>
+                        </div>
+                        <div style={S.flowRow}><span style={S.flowLbl}>WEEKLY FLOW</span><span style={{...S.flowVal,color:isIn?"#00ff88":"#ff3366"}}>{isIn?"+":""}${d.weeklyFlow.toFixed(1)}B</span></div>
+                        <div style={S.flowBar}><div style={{width:`${Math.min(100,(Math.abs(d.weeklyFlow)/3)*100)}%`,height:"100%",background:isIn?"#00ff88":"#ff3366"}}/></div>
+                        <div style={S.flowRow}><span style={S.flowLbl}>MOMENTUM</span><span style={{fontSize:"14px",color:d.momentum>0?"#00ff88":"#ff3366"}}>{d.momentum>0?"↑":"↓"} {Math.abs(d.momentum)}%</span></div>
+                        {d.note&&<div style={{fontSize:"13px",color:"#ccdde8",marginTop:"10px",lineHeight:"1.6"}}>{d.note}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {tab===3 && (
+              <>
+                <div style={S.secTitle}>MACRO CONDITIONS · RATE & RISK ENVIRONMENT</div>
+                <div style={S.macroGrid}>
+                  {data.macro?.map(m=>(
+                    <div key={m.metric} style={S.macroCard}>
+                      <div style={{fontSize:"12px",color:"#8aaacc",marginBottom:"5px"}}>{m.metric}</div>
+                      <div style={{fontSize:"26px",fontWeight:"700",color:m.direction==="up"?"#ff6644":m.direction==="down"?"#00ff88":"#ffffff"}}>{m.value}</div>
+                      <div style={{fontSize:"14px",marginTop:"5px",color:m.direction==="up"?"#ff6644":m.direction==="down"?"#00ff88":"#8aaacc"}}>{m.direction==="up"?"▲":m.direction==="down"?"▼":"—"} {m.change}</div>
+                      <div style={{fontSize:"13px",color:"#ccdde8",marginTop:"10px",lineHeight:"1.6"}}>{m.note}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div style={S.timestamp}>◎ SCAN COMPLETED · {data.scanTime}</div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
-ReactDOM.render(<App/>, document.getElementById(“root”));
+ReactDOM.render(<App/>, document.getElementById("root"));
 </script>
-
 </body>
 </html>
