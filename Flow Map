@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -80,301 +79,296 @@ input:focus { outline: none; border-color: #aa6600 !important; }
 const { useState } = React;
 
 const SECTORS = [
-{id:“XLK”, name:“Technology”,       color:”#00c8ff”, cycle:“Late”},
-{id:“XLV”, name:“Healthcare”,       color:”#00e87a”, cycle:“Early”},
-{id:“XLF”, name:“Financials”,       color:”#ffaa00”, cycle:“Early”},
-{id:“XLE”, name:“Energy”,           color:”#ff6600”, cycle:“Mid”},
-{id:“XLY”, name:“Consumer Disc.”,   color:”#ff3366”, cycle:“Early”},
-{id:“XLI”, name:“Industrials”,      color:”#bb88ff”, cycle:“Mid”},
-{id:“XLB”, name:“Materials”,        color:”#44ffaa”, cycle:“Mid”},
-{id:“XLU”, name:“Utilities”,        color:”#ffdd44”, cycle:“Late”},
-{id:“XLRE”,name:“Real Estate”,      color:”#ff88bb”, cycle:“Late”},
-{id:“XLC”, name:“Comm. Services”,   color:”#66ddff”, cycle:“Late”},
-{id:“XLP”, name:“Consumer Staples”, color:”#aaffcc”, cycle:“Defensive”},
+  {id:"XLK", name:"Technology",       color:"#00c8ff", cycle:"Late"},
+  {id:"XLV", name:"Healthcare",       color:"#00e87a", cycle:"Early"},
+  {id:"XLF", name:"Financials",       color:"#ffaa00", cycle:"Early"},
+  {id:"XLE", name:"Energy",           color:"#ff6600", cycle:"Mid"},
+  {id:"XLY", name:"Consumer Disc.",   color:"#ff3366", cycle:"Early"},
+  {id:"XLI", name:"Industrials",      color:"#bb88ff", cycle:"Mid"},
+  {id:"XLB", name:"Materials",        color:"#44ffaa", cycle:"Mid"},
+  {id:"XLU", name:"Utilities",        color:"#ffdd44", cycle:"Late"},
+  {id:"XLRE",name:"Real Estate",      color:"#ff88bb", cycle:"Late"},
+  {id:"XLC", name:"Comm. Services",   color:"#66ddff", cycle:"Late"},
+  {id:"XLP", name:"Consumer Staples", color:"#aaffcc", cycle:"Defensive"},
 ];
-const CYCLES = [“Early”,“Mid”,“Late”,“Defensive”];
+const CYCLES = ["Early","Mid","Late","Defensive"];
 const CCFG = {
-Early:     {bg:”#001a0a”,border:”#00aa44”,text:”#00ff88”,label:“EXPANSION”},
-Mid:       {bg:”#0a0f00”,border:”#aaaa00”,text:”#ffff44”,label:“PEAK”},
-Late:      {bg:”#0a0500”,border:”#aa5500”,text:”#ff9900”,label:“SLOWDOWN”},
-Defensive: {bg:”#050010”,border:”#5500aa”,text:”#aa66ff”,label:“CONTRACTION”},
+  Early:     {bg:"#001a0a",border:"#00aa44",text:"#00ff88",label:"EXPANSION"},
+  Mid:       {bg:"#0a0f00",border:"#aaaa00",text:"#ffff44",label:"PEAK"},
+  Late:      {bg:"#0a0500",border:"#aa5500",text:"#ff9900",label:"SLOWDOWN"},
+  Defensive: {bg:"#050010",border:"#5500aa",text:"#aa66ff",label:"CONTRACTION"},
 };
 const LSTEPS = [
-“Pulling ETF price action & volume…”,
-“Mapping institutional flow vectors…”,
-“Scoring rotation momentum…”,
-“Identifying from/to sector pairs…”,
-“Building rotation signal matrix…”,
+  "Pulling ETF price action & volume...",
+  "Mapping institutional flow vectors...",
+  "Scoring rotation momentum...",
+  "Identifying from/to sector pairs...",
+  "Building rotation signal matrix...",
 ];
 
-const SC  = id => SECTORS.find(s=>s.id===id)?.color||”#888”;
-const SCL = n  => n>50?”#00ff88”:n>20?”#88ff44”:n>0?”#ccff44”:n>-20?”#ffaa00”:n>-50?”#ff6600”:”#ff3366”;
+const SC  = id => SECTORS.find(s=>s.id===id)?.color||"#888";
+const SCL = n  => n>50?"#00ff88":n>20?"#88ff44":n>0?"#ccff44":n>-20?"#ffaa00":n>-50?"#ff6600":"#ff3366";
 const SOP = s  => ({STRONG:1,MODERATE:0.7,WEAK:0.4}[s]||0.5);
 
 function PipMeter({value,color}){
-const f=Math.round((value/100)*10);
-return(
-<div className="pips">
-{Array.from({length:10}).map((_,i)=>(
-<div key={i} className=“pip” style={{background:i<f?color:”#0a1018”,borderColor:i<f?color:”#1a2a3a”,boxShadow:i<f?`0 0 5px ${color}66`:“none”}}/>
-))}
-<span style={{fontSize:“14px”,fontWeight:“700”,marginLeft:“7px”,color}}>{value}%</span>
-</div>
-);
+  const f=Math.round((value/100)*10);
+  return(
+    <div className="pips">
+      {Array.from({length:10}).map((_,i)=>(
+        <div key={i} className="pip" style={{background:i<f?color:"#0a1018",borderColor:i<f?color:"#1a2a3a",boxShadow:i<f?`0 0 5px ${color}66`:"none"}}/>
+      ))}
+      <span style={{fontSize:"14px",fontWeight:"700",marginLeft:"7px",color}}>{value}%</span>
+    </div>
+  );
 }
 
 function App(){
-const [scanning,setScanning]=useState(false);
-const [step,setStep]=useState(0);
-const [prog,setProg]=useState(0);
-const [data,setData]=useState(null);
-const [error,setError]=useState(null);
-const [apiKey,setApiKey]=useState(()=>localStorage.getItem(“srfm_api_key”)||””);
-const [keyInput,setKeyInput]=useState(()=>localStorage.getItem(“srfm_api_key”)||””);
-const [keySaved,setKeySaved]=useState(false);
+  const [scanning,setScanning]=useState(false);
+  const [step,setStep]=useState(0);
+  const [prog,setProg]=useState(0);
+  const [data,setData]=useState(null);
+  const [error,setError]=useState(null);
+  const [apiKey,setApiKey]=useState(()=>localStorage.getItem("srfm_api_key")||"");
+  const [keyInput,setKeyInput]=useState(()=>localStorage.getItem("srfm_api_key")||"");
+  const [keySaved,setKeySaved]=useState(false);
 
-function saveKey(){
-localStorage.setItem(“srfm_api_key”,keyInput);
-setApiKey(keyInput);
-setKeySaved(true);
-setTimeout(()=>setKeySaved(false),2000);
-}
-
-async function runScan(){
-if(!apiKey){setError(“Enter your Anthropic API key above first.”);return;}
-setScanning(true);setStep(0);setProg(0);setData(null);setError(null);
-for(let i=0;i<LSTEPS.length;i++){setStep(i);setProg(((i+1)/LSTEPS.length)*100);await new Promise(r=>setTimeout(r,850));}
-try{
-const prompt=`You are an expert sector rotation analyst for ${new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'})}. Analyze where institutional money is rotating BETWEEN stock sectors right now. Return ONLY valid JSON (no markdown, no backticks): {"scanTime":"${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}","phase":"EARLY CYCLE or MID CYCLE or LATE CYCLE or CONTRACTION","phaseColor":"#00ff88 or #ffff44 or #ff9900 or #aa66ff","conviction":number 0-100,"narrative":"2-3 sentences on rotation dynamics","rotationFlows":[{"fromEtf":"ETF","fromName":"name","toEtf":"ETF","toName":"name","flowBillions":number,"strength":"STRONG or MODERATE or WEAK","reason":"why","color":"#hex"}],"heatmap":[{"etf":"XLK","name":"Technology","rotationScore":number -100 to 100,"signal":"ACCUMULATE or DISTRIBUTE or HOLD or AVOID","weeklyMomentum":number,"rank":number 1-11}],"cyclePositioning":{"currentPhase":"Early or Mid or Late or Defensive","nextPhase":"Early or Mid or Late or Defensive","phaseProgress":number 0-100,"rotatingInto":["XLF"],"rotatingOutOf":["XLK"]},"keyInsight":"one sharp actionable insight"} 4-6 rotation flows. All 11 sectors in heatmap: XLK,XLV,XLF,XLE,XLY,XLI,XLB,XLU,XLRE,XLC,XLP.`;
-
-```
-  const headers={
-    "Content-Type":"application/json",
-    "x-api-key":apiKey,
-    "anthropic-version":"2023-06-01",
-    "anthropic-dangerous-direct-browser-access":"true"
-  };
-  const tools=[{type:"web_search_20250305",name:"web_search"}];
-  let messages=[{role:"user",content:prompt}];
-  let parsed=null;
-
-  for(let i=0;i<8;i++){
-    const res=await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",headers,
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,tools,messages})
-    });
-    if(!res.ok){const e=await res.json();throw new Error(e.error?.message||`HTTP ${res.status}`);}
-    const raw=await res.json();
-    messages.push({role:"assistant",content:raw.content});
-
-    if(raw.stop_reason==="end_turn"){
-      const text=raw.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
-      const m=text.replace(/```json|```/g,"").trim().match(/\{[\s\S]*\}/);
-      if(!m)throw new Error("No JSON returned");
-      parsed=JSON.parse(m[0]);break;
-    }
-    const toolUseBlocks=raw.content.filter(b=>b.type==="tool_use");
-    if(toolUseBlocks.length===0){
-      const text=raw.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
-      const m=text.replace(/```json|```/g,"").trim().match(/\{[\s\S]*\}/);
-      if(!m)throw new Error("No JSON returned");
-      parsed=JSON.parse(m[0]);break;
-    }
-    messages.push({role:"user",content:toolUseBlocks.map(block=>({
-      type:"tool_result",tool_use_id:block.id,content:block.content||""
-    }))});
+  function saveKey(){
+    localStorage.setItem("srfm_api_key",keyInput);
+    setApiKey(keyInput);
+    setKeySaved(true);
+    setTimeout(()=>setKeySaved(false),2000);
   }
-  if(!parsed)throw new Error("No data returned");
-  setData(parsed);
-}catch(e){setError("Scan error: "+e.message);}
-finally{setScanning(false);}
-```
 
-}
+  async function runScan(){
+    if(!apiKey){setError("Enter your Anthropic API key above first.");return;}
+    setScanning(true);setStep(0);setProg(0);setData(null);setError(null);
+    for(let i=0;i<LSTEPS.length;i++){setStep(i);setProg(((i+1)/LSTEPS.length)*100);await new Promise(r=>setTimeout(r,850));}
+    try{
+      const prompt=`You are an expert sector rotation analyst for ${new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'})}. Analyze where institutional money is rotating BETWEEN stock sectors right now. Return ONLY valid JSON (no markdown, no backticks):
+{"scanTime":"${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}","phase":"EARLY CYCLE or MID CYCLE or LATE CYCLE or CONTRACTION","phaseColor":"#00ff88 or #ffff44 or #ff9900 or #aa66ff","conviction":number 0-100,"narrative":"2-3 sentences on rotation dynamics","rotationFlows":[{"fromEtf":"ETF","fromName":"name","toEtf":"ETF","toName":"name","flowBillions":number,"strength":"STRONG or MODERATE or WEAK","reason":"why","color":"#hex"}],"heatmap":[{"etf":"XLK","name":"Technology","rotationScore":number -100 to 100,"signal":"ACCUMULATE or DISTRIBUTE or HOLD or AVOID","weeklyMomentum":number,"rank":number 1-11}],"cyclePositioning":{"currentPhase":"Early or Mid or Late or Defensive","nextPhase":"Early or Mid or Late or Defensive","phaseProgress":number 0-100,"rotatingInto":["XLF"],"rotatingOutOf":["XLK"]},"keyInsight":"one sharp actionable insight"}
+4-6 rotation flows. All 11 sectors in heatmap: XLK,XLV,XLF,XLE,XLY,XLI,XLB,XLU,XLRE,XLC,XLP.`;
 
-return(
-<div className="root">
-<div className="hdr">
-<div>
-<div className="htitle">◈ ROTATION FLOW MAP</div>
-<div className="hsub">WHERE IS MONEY MOVING BETWEEN STOCK SECTORS</div>
-</div>
-<button className="btn" onClick={runScan} disabled={scanning}>
-{scanning?<span className="pulse">● SCANNING…</span>:“▶ RUN SCAN”}
-</button>
-</div>
+      const headers={
+        "Content-Type":"application/json",
+        "x-api-key":apiKey,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      };
+      const tools=[{type:"web_search_20250305",name:"web_search"}];
+      let messages=[{role:"user",content:prompt}];
+      let parsed=null;
 
-```
-  {/* API KEY */}
-  <div className="keybar">
-    <span className="keylbl">API KEY</span>
-    <input className="keyinp" type="password" placeholder="sk-ant-api03-..." value={keyInput}
-      onChange={e=>setKeyInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveKey()}/>
-    <button className="keybtn" onClick={saveKey}>{keySaved?"✓ SAVED":"SAVE"}</button>
-    <span className="keynote">Saved in browser · never sent anywhere except Anthropic</span>
-  </div>
+      for(let i=0;i<8;i++){
+        const res=await fetch("https://api.anthropic.com/v1/messages",{
+          method:"POST",headers,
+          body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,tools,messages})
+        });
+        if(!res.ok){const e=await res.json();throw new Error(e.error?.message||`HTTP ${res.status}`);}
+        const raw=await res.json();
+        messages.push({role:"assistant",content:raw.content});
 
-  <div className="body">
-    {scanning&&(
-      <div className="loading">
-        {LSTEPS.map((s,i)=>(
-          <div key={i} className="lstep" style={{color:i<step?"#2a4a5a":i===step?"#ffaa00":"#1a2a3a",fontWeight:i===step?"700":"400"}}>
-            {i<step?"✓":i===step?"▶":"○"} {s}
-          </div>
-        ))}
-        <div className="ptrack"><div className="pfill" style={{width:`${prog}%`}}/></div>
-        <div style={{fontSize:"12px",color:"#2a4a5a",letterSpacing:"3px"}}>ANALYZING ROTATION VECTORS</div>
-      </div>
-    )}
+        if(raw.stop_reason==="end_turn"){
+          const text=raw.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+          const m=text.replace(/```json|```/g,"").trim().match(/\{[\s\S]*\}/);
+          if(!m)throw new Error("No JSON returned");
+          parsed=JSON.parse(m[0]);break;
+        }
+        const toolUseBlocks=raw.content.filter(b=>b.type==="tool_use");
+        if(toolUseBlocks.length===0){
+          const text=raw.content.filter(b=>b.type==="text").map(b=>b.text).join("\n");
+          const m=text.replace(/```json|```/g,"").trim().match(/\{[\s\S]*\}/);
+          if(!m)throw new Error("No JSON returned");
+          parsed=JSON.parse(m[0]);break;
+        }
+        messages.push({role:"user",content:toolUseBlocks.map(block=>({
+          type:"tool_result",tool_use_id:block.id,content:block.content||""
+        }))});
+      }
+      if(!parsed)throw new Error("No data returned");
+      setData(parsed);
+    }catch(e){setError("Scan error: "+e.message);}
+    finally{setScanning(false);}
+  }
 
-    {error&&!scanning&&<div style={{padding:"22px",color:"#ff3366",fontSize:"15px"}}>⚠ {error}</div>}
-
-    {!scanning&&!data&&!error&&(
-      <div className="empty">
-        <div style={{fontSize:"40px",marginBottom:"14px",opacity:0.3}}>◈</div>
-        <div style={{fontSize:"14px",letterSpacing:"4px",textTransform:"uppercase"}}>Enter API key above then press Run Scan</div>
-        <div style={{fontSize:"12px",color:"#1a2a3a",marginTop:"12px",letterSpacing:"2px"}}>Get your key at console.anthropic.com</div>
-      </div>
-    )}
-
-    {!scanning&&data&&(
-      <>
-        <div className="verdict">
-          <div>
-            <div className="vlbl">CYCLE PHASE</div>
-            <div className="vphase" style={{color:data.phaseColor}}>{data.phase}</div>
-            <PipMeter value={data.conviction} color={data.phaseColor}/>
-          </div>
-          <div style={{flex:1,minWidth:"200px"}}>
-            <div className="vlbl">ROTATION NARRATIVE</div>
-            <div className="narr">{data.narrative}</div>
-          </div>
-          {data.keyInsight&&(
-            <div style={{maxWidth:"240px",borderLeft:"1px solid #2a3a4a",paddingLeft:"18px"}}>
-              <div className="vlbl">KEY SIGNAL</div>
-              <div style={{fontSize:"13px",color:"#ffaa00",lineHeight:"1.7"}}>{data.keyInsight}</div>
-            </div>
-          )}
+  return(
+    <div className="root">
+      <div className="hdr">
+        <div>
+          <div className="htitle">◈ ROTATION FLOW MAP</div>
+          <div className="hsub">WHERE IS MONEY MOVING BETWEEN STOCK SECTORS</div>
         </div>
+        <button className="btn" onClick={runScan} disabled={scanning}>
+          {scanning?<span className="pulse">● SCANNING...</span>:"▶ RUN SCAN"}
+        </button>
+      </div>
 
-        {data.rotationFlows?.length>0&&(
-          <div className="sec">
-            <div className="sectitle">ACTIVE ROTATION FLOWS · MONEY MOVING FROM → INTO</div>
-            {data.rotationFlows.map((f,i)=>{
-              const fc=SC(f.fromEtf),tc=SC(f.toEtf),ac=f.color||"#ffaa00";
-              return(
-                <div key={i} className="frow">
-                  <div style={{position:"absolute",left:0,top:0,bottom:0,width:"3px",background:ac,opacity:0.8}}/>
-                  <div className="fbox" style={{borderColor:fc+"55",background:fc+"11"}}>
-                    <div className="setf" style={{color:fc+"88"}}>FROM</div>
-                    <div className="sname" style={{color:fc}}>{f.fromEtf}</div>
-                    <div className="setf" style={{color:fc+"cc"}}>{f.fromName}</div>
-                  </div>
-                  <div className="farrow">
-                    <div className="aline">
-                      <div className="afill" style={{background:`linear-gradient(90deg,${fc}44,${ac},${tc}44)`,opacity:SOP(f.strength)}}/>
-                      <span style={{fontSize:"16px",color:ac}}>▶</span>
+      {/* API KEY */}
+      <div className="keybar">
+        <span className="keylbl">API KEY</span>
+        <input className="keyinp" type="password" placeholder="sk-ant-api03-..." value={keyInput}
+          onChange={e=>setKeyInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveKey()}/>
+        <button className="keybtn" onClick={saveKey}>{keySaved?"✓ SAVED":"SAVE"}</button>
+        <span className="keynote">Saved in browser · never sent anywhere except Anthropic</span>
+      </div>
+
+      <div className="body">
+        {scanning&&(
+          <div className="loading">
+            {LSTEPS.map((s,i)=>(
+              <div key={i} className="lstep" style={{color:i<step?"#2a4a5a":i===step?"#ffaa00":"#1a2a3a",fontWeight:i===step?"700":"400"}}>
+                {i<step?"✓":i===step?"▶":"○"} {s}
+              </div>
+            ))}
+            <div className="ptrack"><div className="pfill" style={{width:`${prog}%`}}/></div>
+            <div style={{fontSize:"12px",color:"#2a4a5a",letterSpacing:"3px"}}>ANALYZING ROTATION VECTORS</div>
+          </div>
+        )}
+
+        {error&&!scanning&&<div style={{padding:"22px",color:"#ff3366",fontSize:"15px"}}>⚠ {error}</div>}
+
+        {!scanning&&!data&&!error&&(
+          <div className="empty">
+            <div style={{fontSize:"40px",marginBottom:"14px",opacity:0.3}}>◈</div>
+            <div style={{fontSize:"14px",letterSpacing:"4px",textTransform:"uppercase"}}>Enter API key above then press Run Scan</div>
+            <div style={{fontSize:"12px",color:"#1a2a3a",marginTop:"12px",letterSpacing:"2px"}}>Get your key at console.anthropic.com</div>
+          </div>
+        )}
+
+        {!scanning&&data&&(
+          <>
+            <div className="verdict">
+              <div>
+                <div className="vlbl">CYCLE PHASE</div>
+                <div className="vphase" style={{color:data.phaseColor}}>{data.phase}</div>
+                <PipMeter value={data.conviction} color={data.phaseColor}/>
+              </div>
+              <div style={{flex:1,minWidth:"200px"}}>
+                <div className="vlbl">ROTATION NARRATIVE</div>
+                <div className="narr">{data.narrative}</div>
+              </div>
+              {data.keyInsight&&(
+                <div style={{maxWidth:"240px",borderLeft:"1px solid #2a3a4a",paddingLeft:"18px"}}>
+                  <div className="vlbl">KEY SIGNAL</div>
+                  <div style={{fontSize:"13px",color:"#ffaa00",lineHeight:"1.7"}}>{data.keyInsight}</div>
+                </div>
+              )}
+            </div>
+
+            {data.rotationFlows?.length>0&&(
+              <div className="sec">
+                <div className="sectitle">ACTIVE ROTATION FLOWS · MONEY MOVING FROM → INTO</div>
+                {data.rotationFlows.map((f,i)=>{
+                  const fc=SC(f.fromEtf),tc=SC(f.toEtf),ac=f.color||"#ffaa00";
+                  return(
+                    <div key={i} className="frow">
+                      <div style={{position:"absolute",left:0,top:0,bottom:0,width:"3px",background:ac,opacity:0.8}}/>
+                      <div className="fbox" style={{borderColor:fc+"55",background:fc+"11"}}>
+                        <div className="setf" style={{color:fc+"88"}}>FROM</div>
+                        <div className="sname" style={{color:fc}}>{f.fromEtf}</div>
+                        <div className="setf" style={{color:fc+"cc"}}>{f.fromName}</div>
+                      </div>
+                      <div className="farrow">
+                        <div className="aline">
+                          <div className="afill" style={{background:`linear-gradient(90deg,${fc}44,${ac},${tc}44)`,opacity:SOP(f.strength)}}/>
+                          <span style={{fontSize:"16px",color:ac}}>▶</span>
+                        </div>
+                        <div style={{fontSize:"13px",fontWeight:"700",color:ac,marginTop:"4px"}}>~${f.flowBillions?.toFixed(1)}B/wk <span style={{opacity:0.7,fontSize:"11px"}}>{f.strength}</span></div>
+                        <div style={{fontSize:"12px",color:"#8aaaaa",marginTop:"3px"}}>{f.reason}</div>
+                      </div>
+                      <div className="fbox" style={{borderColor:tc+"55",background:tc+"11"}}>
+                        <div className="setf" style={{color:tc+"88"}}>INTO</div>
+                        <div className="sname" style={{color:tc}}>{f.toEtf}</div>
+                        <div className="setf" style={{color:tc+"cc"}}>{f.toName}</div>
+                      </div>
                     </div>
-                    <div style={{fontSize:"13px",fontWeight:"700",color:ac,marginTop:"4px"}}>~${f.flowBillions?.toFixed(1)}B/wk <span style={{opacity:0.7,fontSize:"11px"}}>{f.strength}</span></div>
-                    <div style={{fontSize:"12px",color:"#8aaaaa",marginTop:"3px"}}>{f.reason}</div>
+                  );
+                })}
+              </div>
+            )}
+
+            {data.heatmap?.length>0&&(
+              <div className="sec">
+                <div className="sectitle">ROTATION SCORE HEATMAP · ALL SECTORS</div>
+                <div className="heatmap">
+                  {[...data.heatmap].sort((a,b)=>b.rotationScore-a.rotationScore).map(s=>{
+                    const col=SC(s.etf),sc=SCL(s.rotationScore),isPos=s.rotationScore>=0;
+                    return(
+                      <div key={s.etf} className="hcard">
+                        <div className="hbg" style={{background:col}}/>
+                        <div className="hrank">#{s.rank}</div>
+                        <div className="hetf" style={{color:col}}>{s.etf}</div>
+                        <div className="hname">{s.name}</div>
+                        <div className="hscore" style={{color:sc}}>{isPos?"+":""}{s.rotationScore}</div>
+                        <div className="htrack">
+                          <div className="hfill" style={{width:`${Math.abs(s.rotationScore)}%`,background:isPos?`linear-gradient(90deg,${col}44,${col})`:"linear-gradient(90deg,#ff336644,#ff3366)"}}/>
+                        </div>
+                        <div className="hsig" style={{color:{ACCUMULATE:"#00ff88",DISTRIBUTE:"#ff3366",HOLD:"#ffaa00",AVOID:"#ff6644"}[s.signal]||"#aaa"}}>{s.signal}</div>
+                        {s.weeklyMomentum!==undefined&&<div style={{fontSize:"11px",color:s.weeklyMomentum>=0?"#44aa66":"#aa3344",marginTop:"4px"}}>{s.weeklyMomentum>=0?"↑":"↓"} {Math.abs(s.weeklyMomentum)}% momentum</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {data.cyclePositioning&&(
+              <div className="sec">
+                <div className="sectitle">BUSINESS CYCLE POSITIONING</div>
+                <div style={{background:"#080c12",border:"1px solid #1a2a3a",borderRadius:"3px",padding:"14px 18px",marginBottom:"12px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:"10px"}}>
+                    {CYCLES.map(ph=>(
+                      <div key={ph} style={{fontSize:"12px",letterSpacing:"2px",color:ph===data.cyclePositioning.currentPhase?CCFG[ph].text:"#3a5a6a",fontWeight:ph===data.cyclePositioning.currentPhase?"700":"400"}}>
+                        {ph===data.cyclePositioning.currentPhase?"▼ ":""}{ph.toUpperCase()}
+                      </div>
+                    ))}
                   </div>
-                  <div className="fbox" style={{borderColor:tc+"55",background:tc+"11"}}>
-                    <div className="setf" style={{color:tc+"88"}}>INTO</div>
-                    <div className="sname" style={{color:tc}}>{f.toEtf}</div>
-                    <div className="setf" style={{color:tc+"cc"}}>{f.toName}</div>
+                  <div style={{background:"#050810",borderRadius:"2px",height:"8px",display:"flex",gap:"2px"}}>
+                    {CYCLES.map(ph=>(
+                      <div key={ph} style={{flex:1,background:ph===data.cyclePositioning.currentPhase?CCFG[ph].text:"#0d1a24",borderRadius:"1px"}}/>
+                    ))}
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",marginTop:"8px"}}>
+                    <div style={{fontSize:"12px",color:"#7a9aaa"}}>PHASE PROGRESS: <span style={{color:data.phaseColor}}>{data.cyclePositioning.phaseProgress}%</span></div>
+                    <div style={{fontSize:"12px",color:"#7a9aaa"}}>NEXT: <span style={{color:CCFG[data.cyclePositioning.nextPhase]?.text||"#888"}}>{data.cyclePositioning.nextPhase?.toUpperCase()}</span></div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-
-        {data.heatmap?.length>0&&(
-          <div className="sec">
-            <div className="sectitle">ROTATION SCORE HEATMAP · ALL SECTORS</div>
-            <div className="heatmap">
-              {[...data.heatmap].sort((a,b)=>b.rotationScore-a.rotationScore).map(s=>{
-                const col=SC(s.etf),sc=SCL(s.rotationScore),isPos=s.rotationScore>=0;
-                return(
-                  <div key={s.etf} className="hcard">
-                    <div className="hbg" style={{background:col}}/>
-                    <div className="hrank">#{s.rank}</div>
-                    <div className="hetf" style={{color:col}}>{s.etf}</div>
-                    <div className="hname">{s.name}</div>
-                    <div className="hscore" style={{color:sc}}>{isPos?"+":""}{s.rotationScore}</div>
-                    <div className="htrack">
-                      <div className="hfill" style={{width:`${Math.abs(s.rotationScore)}%`,background:isPos?`linear-gradient(90deg,${col}44,${col})`:"linear-gradient(90deg,#ff336644,#ff3366)"}}/>
-                    </div>
-                    <div className="hsig" style={{color:{ACCUMULATE:"#00ff88",DISTRIBUTE:"#ff3366",HOLD:"#ffaa00",AVOID:"#ff6644"}[s.signal]||"#aaa"}}>{s.signal}</div>
-                    {s.weeklyMomentum!==undefined&&<div style={{fontSize:"11px",color:s.weeklyMomentum>=0?"#44aa66":"#aa3344",marginTop:"4px"}}>{s.weeklyMomentum>=0?"↑":"↓"} {Math.abs(s.weeklyMomentum)}% momentum</div>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {data.cyclePositioning&&(
-          <div className="sec">
-            <div className="sectitle">BUSINESS CYCLE POSITIONING</div>
-            <div style={{background:"#080c12",border:"1px solid #1a2a3a",borderRadius:"3px",padding:"14px 18px",marginBottom:"12px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:"10px"}}>
-                {CYCLES.map(ph=>(
-                  <div key={ph} style={{fontSize:"12px",letterSpacing:"2px",color:ph===data.cyclePositioning.currentPhase?CCFG[ph].text:"#3a5a6a",fontWeight:ph===data.cyclePositioning.currentPhase?"700":"400"}}>
-                    {ph===data.cyclePositioning.currentPhase?"▼ ":""}{ph.toUpperCase()}
-                  </div>
-                ))}
+                <div className="cgrid">
+                  {CYCLES.map(phase=>{
+                    const cfg=CCFG[phase],isCurr=phase===data.cyclePositioning.currentPhase;
+                    const secs=SECTORS.filter(s=>s.cycle===phase),rot=data.cyclePositioning;
+                    return(
+                      <div key={phase} className="ccol" style={{background:isCurr?cfg.bg:"#050810",borderColor:isCurr?cfg.border:"#1a2a3a",boxShadow:isCurr?`0 0 20px ${cfg.text}18`:"none"}}>
+                        <div className="cph" style={{color:cfg.text}}>{isCurr?"● ":"○ "}{phase.toUpperCase()}</div>
+                        <div className="clbl" style={{color:cfg.text}}>{cfg.label}</div>
+                        {secs.map(s=>{
+                          const isIn=rot.rotatingInto?.includes(s.id),isOut=rot.rotatingOutOf?.includes(s.id);
+                          return(
+                            <div key={s.id} className="csec">
+                              <div className="cdot" style={{background:s.color}}/>
+                              <div style={{flex:1}}>
+                                <div className="csn" style={{color:s.color}}>{s.name}</div>
+                                <div className="cet">{s.id}</div>
+                              </div>
+                              {isIn&&<div className="badge" style={{background:"#001a0a",color:"#00ff88",border:"1px solid #00aa44"}}>IN↑</div>}
+                              {isOut&&<div className="badge" style={{background:"#1a0008",color:"#ff3366",border:"1px solid #aa0033"}}>OUT↓</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div style={{background:"#050810",borderRadius:"2px",height:"8px",display:"flex",gap:"2px"}}>
-                {CYCLES.map(ph=>(
-                  <div key={ph} style={{flex:1,background:ph===data.cyclePositioning.currentPhase?CCFG[ph].text:"#0d1a24",borderRadius:"1px"}}/>
-                ))}
-              </div>
-              <div style={{display:"flex",justifyContent:"space-between",marginTop:"8px"}}>
-                <div style={{fontSize:"12px",color:"#7a9aaa"}}>PHASE PROGRESS: <span style={{color:data.phaseColor}}>{data.cyclePositioning.phaseProgress}%</span></div>
-                <div style={{fontSize:"12px",color:"#7a9aaa"}}>NEXT: <span style={{color:CCFG[data.cyclePositioning.nextPhase]?.text||"#888"}}>{data.cyclePositioning.nextPhase?.toUpperCase()}</span></div>
-              </div>
-            </div>
-            <div className="cgrid">
-              {CYCLES.map(phase=>{
-                const cfg=CCFG[phase],isCurr=phase===data.cyclePositioning.currentPhase;
-                const secs=SECTORS.filter(s=>s.cycle===phase),rot=data.cyclePositioning;
-                return(
-                  <div key={phase} className="ccol" style={{background:isCurr?cfg.bg:"#050810",borderColor:isCurr?cfg.border:"#1a2a3a",boxShadow:isCurr?`0 0 20px ${cfg.text}18`:"none"}}>
-                    <div className="cph" style={{color:cfg.text}}>{isCurr?"● ":"○ "}{phase.toUpperCase()}</div>
-                    <div className="clbl" style={{color:cfg.text}}>{cfg.label}</div>
-                    {secs.map(s=>{
-                      const isIn=rot.rotatingInto?.includes(s.id),isOut=rot.rotatingOutOf?.includes(s.id);
-                      return(
-                        <div key={s.id} className="csec">
-                          <div className="cdot" style={{background:s.color}}/>
-                          <div style={{flex:1}}>
-                            <div className="csn" style={{color:s.color}}>{s.name}</div>
-                            <div className="cet">{s.id}</div>
-                          </div>
-                          {isIn&&<div className="badge" style={{background:"#001a0a",color:"#00ff88",border:"1px solid #00aa44"}}>IN↑</div>}
-                          {isOut&&<div className="badge" style={{background:"#1a0008",color:"#ff3366",border:"1px solid #aa0033"}}>OUT↓</div>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+            )}
+            <div className="ts">◎ SCAN COMPLETED · {data.scanTime}</div>
+          </>
         )}
-        <div className="ts">◎ SCAN COMPLETED · {data.scanTime}</div>
-      </>
-    )}
-  </div>
-</div>
-```
-
-);
+      </div>
+    </div>
+  );
 }
 
-ReactDOM.render(<App/>, document.getElementById(“root”));
+ReactDOM.render(<App/>, document.getElementById("root"));
 </script>
-
 </body>
 </html>
