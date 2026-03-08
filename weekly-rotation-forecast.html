@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Weekly Rotation Forecast</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#040608;font-family:'Share Tech Mono',monospace;color:#e8f4e8;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:#040608;}
+::-webkit-scrollbar-thumb{background:#1a3a2a;border-radius:2px;}
+input:focus{outline:none;}
+@keyframes scanline{0%{top:-10%}100%{top:110%}}
+@keyději pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes glow{0%,100%{text-shadow:0 0 10px #00ff88}50%{text-shadow:0 0 25px #00ff88,0 0 50px #00ff8844}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.blink{animation:blink 1s infinite;}
+.fadein{animation:fadeIn 0.5s ease forwards;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const LOADING_STEPS = [
+  "Searching ETF.com for weekly fund flow data...",
+  "Pulling VettaFi sector rotation reports...",
+  "Scanning Unusual Whales options & dark pool flow...",
+  "Fetching Barchart options sentiment data...",
+  "Checking CME FedWatch futures positioning...",
+  "Reading AAII investor sentiment survey...",
+  "Scanning macro calendar for week ahead...",
+  "Pulling financial news: Bloomberg, Reuters, MarketWatch...",
+  "Analyzing institutional 13F positioning signals...",
+  "Synthesizing weekly rotation forecast...",
+];
+
+const BIAS_COLORS = {
+  "RISK-ON":    { bg:"#001a0a", border:"#00aa44", text:"#00ff88", glow:"#00ff8833" },
+  "RISK-OFF":   { bg:"#1a0008", border:"#aa0033", text:"#ff3366", glow:"#ff336633" },
+  "DEFENSIVE":  { bg:"#0a0800", border:"#aa8800", text:"#ffcc00", glow:"#ffcc0033" },
+  "NEUTRAL":    { bg:"#0a0a1a", border:"#4444aa", text:"#8888ff", glow:"#8888ff33" },
+  "ROTATION":   { bg:"#0a0a00", border:"#aaaa00", text:"#ffff44", glow:"#ffff4433" },
+};
+
+const CONVICTION_COLORS = {
+  HIGH:   "#00ff88",
+  MEDIUM: "#ffaa00",
+  LOW:    "#ff6644",
+};
+
+async function callClaude(prompt, apiKey) {
+  const headers = {
+    "Content-Type": "application/json",
+    "x-api-key": apiKey,
+    "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true",
+  };
+  const tools = [{ type: "web_search_20250305", name: "web_search" }];
+  let messages = [{ role: "user", content: prompt }];
+
+  for (let i = 0; i < 12; i++) {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", headers,
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 5000, tools, messages }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+    const raw = await res.json();
+    messages.push({ role: "assistant", content: raw.content });
+    if (raw.stop_reason === "end_turn") {
+      const text = raw.content.filter(b => b.type === "text").map(b => b.text).join("\n");
+      const m = text.replace(/```json|```/g, "").trim().match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("No JSON in response");
+      return JSON.parse(m[0]);
+    }
+    const toolUse = raw.content.filter(b => b.type === "tool_use");
+    if (!toolUse.length) {
+      const text = raw.content.filter(b => b.type === "text").map(b => b.text).join("\n");
+      const m = text.replace(/```json|```/g, "").trim().match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("No JSON in response");
+      return JSON.parse(m[0]);
+    }
+    messages.push({ role: "user", content: toolUse.map(b => ({ type: "tool_result", tool_use_id: b.id, content: b.content || "" })) });
+  }
+  throw new Error("Max iterations reached");
+}
+
+function ConvictionBar({ level, color }) {
+  const w = level === "HIGH" ? 100 : level === "MEDIUM" ? 60 : 30;
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+      <div style={{ flex:1, background:"#0a1a0a", borderRadius:"2px", height:"6px", overflow:"hidden" }}>
+        <div style={{ width:`${w}%`, height:"100%", background:`linear-gradient(90deg,${color}44,${color})`, transition:"width 1s ease" }}/>
+      </div>
+      <span style={{ fontSize:"11px", color, letterSpacing:"2px", fontWeight:"700", minWidth:"52px" }}>{level}</span>
+    </div>
+  );
+}
+
+function WatchCard({ item, rank }) {
+  const isLong = item.direction === "LONG";
+  const col = isLong ? "#00ff88" : "#ff3366";
+  const convCol = CONVICTION_COLORS[item.conviction] || "#ffaa00";
+  return (
+    <div className="fadein" style={{ background:"#060e08", border:`1px solid ${col}33`, borderLeft:`3px solid ${col}`, borderRadius:"3px", padding:"14px 16px", position:"relative", marginBottom:"10px" }}>
+      <div style={{ position:"absolute", top:"10px", right:"12px", fontSize:"22px", fontWeight:"700", color:`${col}22`, fontFamily:"'Rajdhani',sans-serif" }}>#{rank}</div>
+      <div style={{ display:"flex", alignItems:"flex-start", gap:"12px", flexWrap:"wrap" }}>
+        <div style={{ minWidth:"80px" }}>
+          <div style={{ fontSize:"20px", fontWeight:"700", color:col, letterSpacing:"2px", fontFamily:"'Rajdhani',sans-serif" }}>{item.ticker}</div>
+          <div style={{ fontSize:"10px", color:"#4a7a5a", letterSpacing:"2px", marginTop:"2px" }}>{item.type}</div>
+        </div>
+        <div style={{ flex:1, minWidth:"160px" }}>
+          <div style={{ fontSize:"13px", color:"#c8e8c8", marginBottom:"6px", lineHeight:"1.6" }}>{item.name}</div>
+          <div style={{ fontSize:"12px", color:"#6a9a7a", lineHeight:"1.7" }}>{item.reason}</div>
+        </div>
+        <div style={{ minWidth:"100px", textAlign:"right" }}>
+          <div style={{ fontSize:"11px", color:"#4a7a5a", letterSpacing:"2px", marginBottom:"4px" }}>CONVICTION</div>
+          <ConvictionBar level={item.conviction} color={convCol}/>
+          {item.keyLevel && <div style={{ fontSize:"11px", color:"#4a7a5a", marginTop:"6px" }}>KEY: <span style={{ color:"#c8e8c8" }}>{item.keyLevel}</span></div>}
+        </div>
+      </div>
+      {item.catalyst && (
+        <div style={{ marginTop:"10px", paddingTop:"8px", borderTop:"1px solid #0a2a0a", fontSize:"11px", color:"#ffaa00", letterSpacing:"1px" }}>
+          ⚡ CATALYST: {item.catalyst}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AvoidCard({ item }) {
+  return (
+    <div style={{ background:"#0e0608", border:"1px solid #aa003322", borderLeft:"3px solid #ff336666", borderRadius:"3px", padding:"10px 14px", marginBottom:"8px", display:"flex", alignItems:"center", gap:"12px", flexWrap:"wrap" }}>
+      <div style={{ fontSize:"16px", fontWeight:"700", color:"#ff3366", letterSpacing:"2px", minWidth:"60px", fontFamily:"'Rajdhani',sans-serif" }}>{item.ticker}</div>
+      <div style={{ flex:1 }}>
+        <div style={{ fontSize:"12px", color:"#8a5a5a", marginBottom:"3px" }}>{item.name}</div>
+        <div style={{ fontSize:"11px", color:"#6a4a4a", lineHeight:"1.6" }}>{item.reason}</div>
+      </div>
+      <div style={{ fontSize:"10px", color:"#ff336688", letterSpacing:"2px", border:"1px solid #ff336644", borderRadius:"2px", padding:"3px 8px" }}>AVOID</div>
+    </div>
+  );
+}
+
+function EventCard({ event }) {
+  const impactCol = event.impact === "HIGH" ? "#ff3366" : event.impact === "MEDIUM" ? "#ffaa00" : "#8888ff";
+  return (
+    <div style={{ background:"#06080e", border:`1px solid ${impactCol}22`, borderRadius:"3px", padding:"10px 14px", marginBottom:"8px", display:"flex", alignItems:"center", gap:"12px", flexWrap:"wrap" }}>
+      <div style={{ minWidth:"90px" }}>
+        <div style={{ fontSize:"13px", fontWeight:"700", color:"#c8d8e8", fontFamily:"'Rajdhani',sans-serif" }}>{event.day}</div>
+        <div style={{ fontSize:"10px", color:"#4a6a8a", marginTop:"2px" }}>{event.time || ""}</div>
+      </div>
+      <div style={{ flex:1 }}>
+        <div style={{ fontSize:"13px", color:"#c8d8e8", marginBottom:"3px" }}>{event.name}</div>
+        <div style={{ fontSize:"11px", color:"#5a7a8a", lineHeight:"1.6" }}>{event.impact_note}</div>
+      </div>
+      <div style={{ fontSize:"10px", letterSpacing:"2px", fontWeight:"700", color:impactCol, border:`1px solid ${impactCol}44`, borderRadius:"2px", padding:"3px 8px" }}>{event.impact}</div>
+    </div>
+  );
+}
+
+function ScenarioCard({ scenario }) {
+  const col = scenario.type === "BULL" ? "#00ff88" : scenario.type === "BEAR" ? "#ff3366" : "#ffaa00";
+  return (
+    <div style={{ background:"#06080a", border:`1px solid ${col}22`, borderRadius:"3px", padding:"12px 16px", flex:1, minWidth:"200px" }}>
+      <div style={{ fontSize:"11px", color:col, letterSpacing:"3px", marginBottom:"6px", fontWeight:"700" }}>{scenario.type} CASE</div>
+      <div style={{ fontSize:"13px", color:"#c8d8e8", marginBottom:"8px", lineHeight:"1.6" }}>{scenario.trigger}</div>
+      <div style={{ fontSize:"11px", color:"#5a7a8a", lineHeight:"1.7" }}>{scenario.result}</div>
+    </div>
+  );
+}
+
+function App() {
+  const [scanning, setScanning] = useState(false);
+  const [step,     setStep]     = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [data,     setData]     = useState(null);
+  const [error,    setError]    = useState(null);
+  const [apiKey,   setApiKey]   = useState(() => localStorage.getItem("wrf_api_key") || "");
+  const [keyInput, setKeyInput] = useState(() => localStorage.getItem("wrf_api_key") || "");
+  const [keySaved, setKeySaved] = useState(false);
+  const [tick,     setTick]     = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setTick(x => x+1), 500);
+    return () => clearInterval(t);
+  }, []);
+
+  function saveKey() {
+    localStorage.setItem("wrf_api_key", keyInput);
+    setApiKey(keyInput);
+    setKeySaved(true);
+    setTimeout(() => setKeySaved(false), 2000);
+  }
+
+  async function runScan() {
+    if (!apiKey) { setError("Enter your Anthropic API key above first."); return; }
+    setScanning(true); setStep(0); setProgress(0); setData(null); setError(null);
+
+    for (let i = 0; i < LOADING_STEPS.length; i++) {
+      setStep(i);
+      setProgress(((i+1)/LOADING_STEPS.length)*100);
+      await new Promise(r => setTimeout(r, 1100));
+    }
+
+    const today = new Date();
+    const weekStr = today.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+    // Find next Monday
+    const nextMon = new Date(today);
+    nextMon.setDate(today.getDate() + (1 + 7 - today.getDay()) % 7 || 7);
+    const nextFri = new Date(nextMon);
+    nextFri.setDate(nextMon.getDate() + 4);
+    const weekAhead = `${nextMon.toLocaleDateString('en-US',{month:'short',day:'numeric'})} - ${nextFri.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+
+    const prompt = `You are an elite institutional trading analyst preparing a weekly rotation forecast for a swing trader. Today is ${weekStr}. The upcoming trading week is ${weekAhead}.
+
+CRITICAL: Search the following sources to gather REAL current data before generating the forecast:
+1. Search "ETF fund flows this week site:etf.com OR site:vettafi.com" for actual ETF flow data
+2. Search "sector rotation money flow ${weekStr}" for current rotation signals  
+3. Search "unusual whales options flow dark pool ${weekStr}" for options/dark pool data
+4. Search "barchart options sentiment sector ${weekStr}" for options sentiment
+5. Search "CME fedwatch fed funds probability ${weekStr}" for futures positioning
+6. Search "AAII sentiment survey ${weekStr}" for retail sentiment
+7. Search "macro economic calendar week of ${weekAhead}" for key events
+8. Search "institutional 13F sector positioning ${weekStr}" for institutional flow
+9. Search "QQQ NQ SPX sector rotation forecast week ${weekAhead}" for market outlook
+10. Search "Unusual Whales congress trades sector ${weekStr}" for any relevant signals
+
+After searching, synthesize ALL findings into this EXACT JSON format (no markdown, no backticks):
+{
+  "weekOf": "${weekAhead}",
+  "generatedAt": "${weekStr}",
+  "overallBias": "RISK-ON or RISK-OFF or DEFENSIVE or NEUTRAL or ROTATION",
+  "biasStrength": "STRONG or MODERATE or WEAK",
+  "oneLiner": "one punchy sentence summarizing the week ahead",
+  "lastWeekRecap": "2 sentences on what happened last week with money flows",
+  "watchlist": [
+    {
+      "ticker": "QQQ",
+      "name": "Invesco QQQ Trust",
+      "type": "ETF or INDEX or STOCK",
+      "direction": "LONG or SHORT",
+      "conviction": "HIGH or MEDIUM or LOW",
+      "reason": "specific data-backed reason why this is the focus this week",
+      "catalyst": "specific event or data point driving this",
+      "keyLevel": "key price level or zone to watch e.g. 480 support"
+    }
+  ],
+  "avoidList": [
+    {
+      "ticker": "XLU",
+      "name": "Utilities Select SPDR",
+      "reason": "specific reason to avoid this week"
+    }
+  ],
+  "sectorRanking": [
+    { "etf": "XLK", "name": "Technology", "rank": 1, "flow": "STRONG IN or MODERATE IN or NEUTRAL or MODERATE OUT or STRONG OUT", "note": "brief note" }
+  ],
+  "keyEvents": [
+    {
+      "day": "Monday",
+      "time": "8:30am ET",
+      "name": "Event name",
+      "impact": "HIGH or MEDIUM or LOW",
+      "impact_note": "how this could shift sector flows"
+    }
+  ],
+  "scenarios": [
+    { "type": "BULL", "trigger": "what would make this a bullish week", "result": "where money flows if bull case plays out" },
+    { "type": "BEAR", "trigger": "what would make this a bearish week", "result": "where money flows if bear case plays out" },
+    { "type": "BASE", "trigger": "most likely scenario", "result": "expected money flow path" }
+  ],
+  "flowSources": ["list the actual sources you found data from"],
+  "analystNote": "2-3 sentences of your sharpest insight for the week - what most traders will miss"
+}
+
+Include 5-8 items in watchlist (mix of indices like NQ/QQQ/SPX/SPY, sector ETFs like XLF/XLK/XLE, and specific high-conviction plays). Include 3-5 items in avoidList. Include all 11 sectors in sectorRanking. Include 4-6 key events. Be SPECIFIC with tickers, levels, and catalysts. Use real data from your searches.`;
+
+    try {
+      const d = await callClaude(prompt, apiKey);
+      setData(d);
+    } catch(e) {
+      setError("Scan failed: " + e.message);
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  const biasConfig = data ? (BIAS_COLORS[data.overallBias] || BIAS_COLORS["NEUTRAL"]) : null;
+
+  return (
+    <div style={{ fontFamily:"'Share Tech Mono',monospace", background:"#040608", color:"#e8f4e8", minHeight:"100vh", fontSize:"14px" }}>
+
+      {/* HEADER */}
+      <div style={{ background:"#050a06", borderBottom:"1px solid #0a2a0a", padding:"14px 22px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"10px", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(0,255,136,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,0.02) 1px,transparent 1px)", backgroundSize:"30px 30px", pointerEvents:"none" }}/>
+        <div style={{ position:"relative" }}>
+          <div style={{ fontSize:"10px", color:"#2a5a3a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"4px" }}>TEDDY7844 · TRADING INTELLIGENCE</div>
+          <div style={{ fontSize:"20px", fontWeight:"700", color:"#00ff88", letterSpacing:"3px", textTransform:"uppercase", fontFamily:"'Rajdhani',sans-serif" }}>
+            ◉ WEEKLY ROTATION FORECAST
+          </div>
+          <div style={{ fontSize:"11px", color:"#3a6a4a", letterSpacing:"3px", marginTop:"3px" }}>WHERE IS MONEY MOVING THIS WEEK · SUNDAY PREP BRIEF</div>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:"12px", position:"relative" }}>
+          {data && <div style={{ fontSize:"11px", color:"#00ff88", letterSpacing:"2px", border:"1px solid #00ff8844", borderRadius:"2px", padding:"4px 10px" }}>● LIVE DATA</div>}
+          <button onClick={runScan} disabled={scanning} style={{ background:scanning?"#0a0f0a":"linear-gradient(135deg,#002a10,#004a1a)", border:`1px solid ${scanning?"#1a3a1a":"#00aa44"}`, borderRadius:"3px", color:scanning?"#2a5a3a":"#00ff88", fontFamily:"'Share Tech Mono',monospace", fontSize:"13px", fontWeight:"700", letterSpacing:"2px", padding:"10px 26px", cursor:scanning?"not-allowed":"pointer", textTransform:"uppercase", boxShadow:scanning?"none":"0 0 20px #00ff8822" }}>
+            {scanning ? <span>● SCANNING<span className="blink">_</span></span> : "▶ RUN WEEKLY SCAN"}
+          </button>
+        </div>
+      </div>
+
+      {/* API KEY */}
+      <div style={{ background:"#040806", borderBottom:"1px solid #0a1a0a", padding:"9px 22px", display:"flex", alignItems:"center", gap:"12px", flexWrap:"wrap" }}>
+        <span style={{ fontSize:"10px", color:"#2a5a3a", letterSpacing:"3px", textTransform:"uppercase", whiteSpace:"nowrap" }}>API KEY</span>
+        <input type="password" placeholder="sk-ant-api03-..." value={keyInput} onChange={e=>setKeyInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveKey()}
+          style={{ flex:1, minWidth:"260px", background:"#030606", border:"1px solid #0a2a0a", borderRadius:"3px", color:"#00ff88", fontFamily:"'Share Tech Mono',monospace", fontSize:"13px", padding:"7px 12px" }}/>
+        <button onClick={saveKey} style={{ background:"#001a08", border:"1px solid #00aa44", borderRadius:"3px", color:"#00ff88", fontFamily:"'Share Tech Mono',monospace", fontSize:"11px", fontWeight:"700", letterSpacing:"1px", padding:"7px 14px", cursor:"pointer", whiteSpace:"nowrap" }}>
+          {keySaved ? "✓ SAVED" : "SAVE"}
+        </button>
+        <span style={{ fontSize:"10px", color:"#1a3a1a", letterSpacing:"1px" }}>Saved in browser · never sent anywhere except Anthropic</span>
+      </div>
+
+      {/* LOADING */}
+      {scanning && (
+        <div style={{ padding:"50px 22px", maxWidth:"600px", margin:"0 auto" }}>
+          <div style={{ fontSize:"12px", color:"#2a6a3a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"24px", textAlign:"center" }}>GATHERING MARKET INTELLIGENCE</div>
+          {LOADING_STEPS.map((s,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"10px", opacity:i>step?0.2:1, transition:"opacity 0.3s" }}>
+              <span style={{ color:i<step?"#00ff88":i===step?"#ffaa00":"#1a3a1a", fontSize:"12px", minWidth:"14px" }}>{i<step?"✓":i===step?"▶":"○"}</span>
+              <span style={{ fontSize:"12px", color:i<step?"#2a5a3a":i===step?"#ffaa00":"#1a3a1a", letterSpacing:"1px" }}>{s}</span>
+            </div>
+          ))}
+          <div style={{ background:"#0a1a0a", border:"1px solid #0a2a0a", borderRadius:"2px", height:"4px", margin:"24px 0", overflow:"hidden" }}>
+            <div style={{ height:"100%", background:"linear-gradient(90deg,#002a10,#00ff88)", width:`${progress}%`, transition:"width 0.8s ease" }}/>
+          </div>
+          <div style={{ textAlign:"center", fontSize:"11px", color:"#1a4a2a", letterSpacing:"3px" }}>SEARCHING {LOADING_STEPS.length} DATA SOURCES</div>
+        </div>
+      )}
+
+      {error && !scanning && <div style={{ padding:"22px", color:"#ff3366", fontSize:"13px" }}>⚠ {error}</div>}
+
+      {!scanning && !data && !error && (
+        <div style={{ textAlign:"center", padding:"80px 20px", color:"#1a4a2a" }}>
+          <div style={{ fontSize:"48px", marginBottom:"16px", opacity:0.3 }}>◉</div>
+          <div style={{ fontSize:"14px", letterSpacing:"4px", textTransform:"uppercase", color:"#2a6a3a" }}>WEEKLY ROTATION INTELLIGENCE</div>
+          <div style={{ fontSize:"11px", color:"#1a3a2a", marginTop:"10px", letterSpacing:"2px", lineHeight:"1.8" }}>
+            Run on Sunday evening for your weekly trade prep<br/>
+            Searches 10+ data sources for real institutional flow data
+          </div>
+        </div>
+      )}
+
+      {/* RESULTS */}
+      {!scanning && data && (
+        <div style={{ padding:"18px 22px", maxWidth:"1200px" }}>
+
+          {/* BIAS BANNER */}
+          <div style={{ background:biasConfig.bg, border:`1px solid ${biasConfig.border}`, borderRadius:"3px", padding:"18px 22px", marginBottom:"16px", display:"flex", alignItems:"center", gap:"22px", flexWrap:"wrap", boxShadow:`0 0 30px ${biasConfig.glow}` }}>
+            <div>
+              <div style={{ fontSize:"10px", color:biasConfig.text, letterSpacing:"4px", opacity:0.7, marginBottom:"4px" }}>WEEK OF {data.weekOf}</div>
+              <div style={{ fontSize:"28px", fontWeight:"700", color:biasConfig.text, letterSpacing:"4px", fontFamily:"'Rajdhani',sans-serif" }}>{data.overallBias}</div>
+              <div style={{ fontSize:"11px", color:biasConfig.text, letterSpacing:"2px", opacity:0.7, marginTop:"2px" }}>{data.biasStrength} SIGNAL</div>
+            </div>
+            <div style={{ flex:1, borderLeft:`1px solid ${biasConfig.border}44`, paddingLeft:"22px" }}>
+              <div style={{ fontSize:"15px", color:"#e8f4e8", lineHeight:"1.7", fontStyle:"italic" }}>"{data.oneLiner}"</div>
+            </div>
+          </div>
+
+          {/* LAST WEEK RECAP */}
+          {data.lastWeekRecap && (
+            <div style={{ background:"#050a06", border:"1px solid #0a1a0a", borderRadius:"3px", padding:"12px 18px", marginBottom:"16px" }}>
+              <div style={{ fontSize:"10px", color:"#2a5a3a", letterSpacing:"3px", marginBottom:"6px" }}>LAST WEEK RECAP</div>
+              <div style={{ fontSize:"13px", color:"#8aa88a", lineHeight:"1.8" }}>{data.lastWeekRecap}</div>
+            </div>
+          )}
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px", marginBottom:"16px" }}>
+
+            {/* WATCHLIST */}
+            <div style={{ gridColumn:"1 / -1" }}>
+              <div style={{ fontSize:"11px", color:"#2a6a3a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a2a0a", display:"flex", alignItems:"center", gap:"10px" }}>
+                <span>▶ THIS WEEK WATCHLIST</span>
+                <span style={{ color:"#1a3a1a" }}>· TICKERS TO FOCUS ON</span>
+              </div>
+              {data.watchlist?.map((item, i) => <WatchCard key={item.ticker} item={item} rank={i+1}/>)}
+            </div>
+
+            {/* AVOID LIST */}
+            <div>
+              <div style={{ fontSize:"11px", color:"#6a2a2a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #2a0a0a" }}>✕ AVOID THIS WEEK</div>
+              {data.avoidList?.map(item => <AvoidCard key={item.ticker} item={item}/>)}
+            </div>
+
+            {/* SECTOR RANKING */}
+            <div>
+              <div style={{ fontSize:"11px", color:"#2a5a6a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a1a2a" }}>◈ SECTOR FLOW RANKING</div>
+              <div style={{ display:"grid", gap:"5px" }}>
+                {data.sectorRanking?.sort((a,b)=>a.rank-b.rank).map(s => {
+                  const isIn = s.flow?.includes("IN");
+                  const isStrong = s.flow?.includes("STRONG");
+                  const col = isIn ? (isStrong?"#00ff88":"#44aa66") : s.flow==="NEUTRAL" ? "#666688" : (isStrong?"#ff3366":"#aa4444");
+                  return (
+                    <div key={s.etf} style={{ display:"flex", alignItems:"center", gap:"10px", padding:"7px 10px", background:"#050a06", borderRadius:"2px", border:"1px solid #0a1a0a" }}>
+                      <span style={{ fontSize:"12px", color:"#2a4a3a", minWidth:"18px" }}>#{s.rank}</span>
+                      <span style={{ fontSize:"13px", fontWeight:"700", color:col, minWidth:"40px", fontFamily:"'Rajdhani',sans-serif" }}>{s.etf}</span>
+                      <span style={{ fontSize:"11px", color:"#4a7a5a", flex:1 }}>{s.name}</span>
+                      <span style={{ fontSize:"10px", color:col, letterSpacing:"1px", textAlign:"right", minWidth:"100px" }}>{s.flow}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* KEY EVENTS */}
+          <div style={{ marginBottom:"16px" }}>
+            <div style={{ fontSize:"11px", color:"#2a4a6a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a1a2a" }}>⚡ KEY EVENTS THIS WEEK · FLOW MOVERS</div>
+            {data.keyEvents?.map((e,i) => <EventCard key={i} event={e}/>)}
+          </div>
+
+          {/* SCENARIOS */}
+          <div style={{ marginBottom:"16px" }}>
+            <div style={{ fontSize:"11px", color:"#4a4a2a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #1a1a0a" }}>◐ WEEK SCENARIOS</div>
+            <div style={{ display:"flex", gap:"10px", flexWrap:"wrap" }}>
+              {data.scenarios?.map((s,i) => <ScenarioCard key={i} scenario={s}/>)}
+            </div>
+          </div>
+
+          {/* ANALYST NOTE */}
+          {data.analystNote && (
+            <div style={{ background:"#060808", border:"1px solid #ffaa0022", borderLeft:"3px solid #ffaa00", borderRadius:"3px", padding:"14px 18px", marginBottom:"16px" }}>
+              <div style={{ fontSize:"10px", color:"#aa7700", letterSpacing:"3px", marginBottom:"7px" }}>◉ ANALYST NOTE · WHAT MOST TRADERS WILL MISS</div>
+              <div style={{ fontSize:"13px", color:"#c8b888", lineHeight:"1.8" }}>{data.analystNote}</div>
+            </div>
+          )}
+
+          {/* DATA SOURCES */}
+          {data.flowSources?.length > 0 && (
+            <div style={{ background:"#050608", border:"1px solid #0a0a1a", borderRadius:"3px", padding:"10px 16px", marginBottom:"16px" }}>
+              <div style={{ fontSize:"10px", color:"#2a2a5a", letterSpacing:"3px", marginBottom:"6px" }}>DATA SOURCES USED</div>
+              <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
+                {data.flowSources.map((s,i) => (
+                  <span key={i} style={{ fontSize:"10px", color:"#3a3a6a", border:"1px solid #1a1a3a", borderRadius:"2px", padding:"2px 8px" }}>{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ fontSize:"10px", color:"#1a3a2a", textAlign:"right", paddingTop:"10px", borderTop:"1px solid #0a1a0a", letterSpacing:"2px" }}>
+            ◉ GENERATED {data.generatedAt} · FOR WEEK OF {data.weekOf}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.render(<App/>, document.getElementById("root"));
+</script>
+</body>
+</html>
