@@ -383,8 +383,9 @@ CRITICAL JSON RULES:
   if (onProgress) onProgress(0);
   // Fetch real OHLC data first -- this runs in parallel with loading animation
   let ohlcText = '';
+  let ohlcData = {};
   try {
-    const ohlcData = await fetchAllOHLC();
+    ohlcData = await fetchAllOHLC();
     ohlcText = formatOHLCForPrompt(ohlcData);
   } catch(e) {
     ohlcText = '[OHLC fetch failed -- using web search data only]';
