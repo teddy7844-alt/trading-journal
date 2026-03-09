@@ -16,28 +16,7 @@ body{background:#040608;font-family:'Share Tech Mono',monospace;color:#e8f4e8;}
 ::-webkit-scrollbar-thumb{background:#1a3a2a;border-radius:2px;}
 input:focus{outline:none;}
 @keyframes scanline{0%{top:-10%}100%{top:110%}}
-@keydji pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-@keyframes glow{0%,100%{text-shadow:0 0 10px #00ff88}50%{text-shadow:0 0 25px #00ff88,0 0 50px #00ff8844}}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-.blink{animation:blink 1s infinite;}
-.fadein{animation:fadeIn 0.5s ease forwards;}
-</style>
-<!-- cache-bust 1773014054973 --></head>
-<body>
-<div id="root"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:#040608;font-family:'Share Tech Mono',monospace;color:#e8f4e8;}
-::-webkit-scrollbar{width:4px;}
-::-webkit-scrollbar-track{background:#040608;}
-::-webkit-scrollbar-thumb{background:#1a3a2a;border-radius:2px;}
-input:focus{outline:none;}
-@keyframes scanline{0%{top:-10%}100%{top:110%}}
-@keydji pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 @keyframes glow{0%,100%{text-shadow:0 0 10px #00ff88}50%{text-shadow:0 0 25px #00ff88,0 0 50px #00ff8844}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
@@ -85,132 +64,8 @@ const CONVICTION_COLORS = {
 };
 
 // ============================================================
-// OHLC PRICE DATA -- fetched from Yahoo Finance before AI scan
-// Calculates real sweep phases from actual weekly candles
+// OHLC PRICE DATA
 // ============================================================
-
-const OHLC_TICKERS = [
-  'SPY','QQQ','XLE','XLB','XLI','XLF','XLK','XLV','XLP','XLY','XLU','XLRE','XLC','IWM',
-  'BTC-USD','ETH-USD','GLD','TLT','GDX','SOXX','SMH','XOP','USO','SLV'
-];
-
-async function fetchWeeklyOHLC(ticker) {
-  // Yahoo Finance v8 API -- 3 months of weekly data
-  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1wk&range=3mo`;
-  const url = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    const quotes = data.chart.result[0];
-    const timestamps = quotes.timestamp;
-    const ohlc = quotes.indicators.quote[0];
-    // Return last 6 weekly candles
-    const candles = [];
-    const len = timestamps.length;
-    const start = Math.max(0, len - 6);
-    for (let i = start; i < len; i++) {
-      candles.push({
-        date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10),
-        open:  parseFloat(ohlc.open[i]?.toFixed(2)),
-        high:  parseFloat(ohlc.high[i]?.toFixed(2)),
-        low:   parseFloat(ohlc.low[i]?.toFixed(2)),
-        close: parseFloat(ohlc.close[i]?.toFixed(2)),
-        volume: ohlc.volume[i]
-      });
-    }
-    return { ticker, candles };
-  } catch(e) {
-    return { ticker, candles: [], error: e.message };
-  }
-}
-
-function classifySweepPhase(candles) {
-  // Need at least 2 candles
-  if (candles.length < 2) return { phase: 'INSUFFICIENT DATA', details: '' };
-  
-  const prev = candles[candles.length - 2]; // prior week
-  const curr = candles[candles.length - 1]; // current/last completed week
-  
-  const prevHigh = prev.high;
-  const prevLow  = prev.low;
-  const currHigh = curr.high;
-  const currLow  = curr.low;
-  const currClose = curr.close;
-  const currOpen  = curr.open;
-  
-  // Sweep detection thresholds
-  const sweepThreshold = 0.001; // 0.1% -- wick must exceed level by this much
-  
-  const sweptHigh = currHigh > prevHigh * (1 + sweepThreshold);
-  const sweptLow  = currLow  < prevLow  * (1 - sweepThreshold);
-  const rejectedFromHigh = currClose < prevHigh; // closed back below the swept high
-  const rejectedFromLow  = currClose > prevLow;  // closed back above the swept low
-  
-  // Check for SFP (single candle wick through + close back)
-  const sfpHigh = sweptHigh && rejectedFromHigh;
-  const sfpLow  = sweptLow  && rejectedFromLow;
-  
-  // Check prior week for roundtrip detection
-  let prevSweptHigh = false, prevSweptLow = false;
-  if (candles.length >= 3) {
-    const prevPrev = candles[candles.length - 3];
-    prevSweptHigh = prev.high > prevPrev.high * (1 + sweepThreshold) && prev.close < prevPrev.high;
-    prevSweptLow  = prev.low  < prevPrev.low  * (1 - sweepThreshold) && prev.close > prevPrev.low;
-  }
-  
-  // Bullish inside bar / coiling
-  const insideBar = currHigh <= prevHigh && currLow >= prevLow;
-  
-  // Classify
-  let phase = 'NEUTRAL';
-  let details = '';
-  
-  if (sfpLow && sfpHigh) {
-    // Both sides swept in same candle -- unusual, flag it
-    phase = 'COILING';
-    details = `Both sides swept and rejected. W: H${currHigh} L${currLow} vs prev H${prevHigh} L${prevLow}`;
-  } else if (sfpLow && prevSweptHigh) {
-    phase = 'ROUNDTRIP BULLISH';
-    details = `Prior wk swept highs, this wk swept lows + rejected. High conviction long. Close: ${currClose}`;
-  } else if (sfpHigh && prevSweptLow) {
-    phase = 'ROUNDTRIP BEARISH';
-    details = `Prior wk swept lows, this wk swept highs + rejected. High conviction short. Close: ${currClose}`;
-  } else if (sfpLow) {
-    phase = 'ACCUMULATION';
-    details = `Lows swept (${currLow} < prev ${prevLow}) + rejected, close: ${currClose}. Sell-side liquidity taken.`;
-  } else if (sfpHigh) {
-    phase = 'DISTRIBUTION';
-    details = `Highs swept (${currHigh} > prev ${prevHigh}) + rejected, close: ${currClose}. Buy-side liquidity taken.`;
-  } else if (sweptLow && !rejectedFromLow) {
-    phase = 'BEARISH BREAKDOWN';
-    details = `Lows swept (${currLow}) and holding below prev low (${prevLow}). Genuine breakdown.`;
-  } else if (sweptHigh && !rejectedFromHigh) {
-    phase = 'BULLISH BREAKOUT';
-    details = `Highs swept (${currHigh}) and holding above prev high (${prevHigh}). Genuine breakout.`;
-  } else if (insideBar) {
-    phase = 'COILING';
-    details = `Inside bar -- coiling within prev range H${prevHigh} L${prevLow}. Breakout imminent.`;
-  } else {
-    phase = 'NEUTRAL';
-    details = `No clear sweep. H${currHigh} L${currLow} vs prev H${prevHigh} L${prevLow}. Close: ${currClose}`;
-  }
-  
-  // Check if it could be LETHAL INJECTION (SFP at key level -- requires context)
-  // We flag it for the AI to confirm with timeframe analysis
-  const potentialLethal = (sfpLow || sfpHigh) && candles.length >= 4;
-  if (potentialLethal && (phase === 'ACCUMULATION' || phase === 'DISTRIBUTION')) {
-    details += ' | POTENTIAL LETHAL INJECTION -- confirm with monthly/weekly alignment';
-  }
-  
-  return {
-    phase,
-    details,
-    lastWeek: { open: currOpen, high: currHigh, low: currLow, close: currClose },
-    priorWeek: { open: prev.open || 0, high: prevHigh, low: prevLow, close: prev.close },
-    swept: { high: sweptHigh, low: sweptLow },
-    rejected: { fromHigh: rejectedFromHigh, fromLow: rejectedFromLow }
-  };
-}
 
 async function fetchAllOHLC(onProgress) {
   const tickers = ['SPY','QQQ','XLE','XLB','XLI','XLF','XLK','XLV','XLP','XLY','XLU','XLRE','XLC','IWM','BTC-USD','ETH-USD','GLD','TLT','GDX','SOXX','SMH','XOP','USO','SLV'];
@@ -276,7 +131,7 @@ async function fetchAllOHLC(onProgress) {
 }
 
 function formatOHLCForPrompt(ohlcData) {
-  const FW = 'NESTED IB FRAMEWORK RULES:\n3-Week bias governs Weekly governs Daily - hierarchy is ABSOLUTE.\nCONFLICT TRAP: single-week ACCUMULATION inside BEARISH weekly bias = DO NOT TRADE LONG (loses avg 42pts/5d).\nROUNDTRIP BULL (highs swept first THEN lows swept+rejected) = MAX CONVICTION LONG 1.5x size.\nROUNDTRIP BEAR (lows swept first THEN highs swept+rejected) = MAX CONVICTION AVOID/SHORT.\nLETHAL INJECTION = phase at mother bar level + weekly bias aligned = highest conviction signal.\nWEEKLY_BIAS sets direction. Single-week phase is entry timing only - never overrides weekly bias.\n\n';
+  const FW = 'NESTED IB FRAMEWORK RULES:\n3-Week bias governs Weekly governs Daily - hierarchy is ABSOLUTE.\nCONFLICT TRAP: single-week ACCUMULATION inside BEARISH weekly bias = DO NOT TRADE LONG.\nROUNDTRIP BULL (highs swept first THEN lows swept+rejected) = MAX CONVICTION LONG 1.5x size.\nROUNDTRIP BEAR (lows swept first THEN highs swept+rejected) = MAX CONVICTION AVOID/SHORT.\nLETHAL INJECTION = phase at mother bar level + weekly bias aligned = highest conviction signal.\nWEEKLY_BIAS sets direction. Single-week phase is entry timing only - never overrides weekly bias.\n\n';
   let text = 'REAL OHLC (1yr weekly, Yahoo Finance via corsproxy):\n' + FW;
   for (const [ticker, data] of Object.entries(ohlcData)) {
     if (!data.lastWeek) continue;
@@ -287,8 +142,87 @@ function formatOHLCForPrompt(ohlcData) {
   return text;
 }
 
+// ============================================================
+// SEARCH PHASE -- calls Claude with web_search tool
+// ============================================================
+async function searchPhase(prompt, apiKey, onProgress) {
+  if (onProgress) onProgress(1, 0);
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-beta": "interleaved-thinking-2025-05-14"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 16000,
+      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || "Search phase API error " + response.status);
+  }
+  const data = await response.json();
+  if (onProgress) onProgress(1, 12);
+  // Extract all text content from the response
+  const textParts = (data.content || [])
+    .filter(b => b.type === "text")
+    .map(b => b.text)
+    .join("\n\n");
+  return textParts || "[No research data returned]";
+}
+
+// ============================================================
+// SYNTHESIS PHASE -- takes research text, returns JSON forecast
+// ============================================================
+async function synthesizePhase(researchText, synthesisPrompt, apiKey) {
+  const fullPrompt = synthesisPrompt + "\n\n=== RESEARCH FINDINGS ===\n" + researchText;
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 8000,
+      messages: [{ role: "user", content: fullPrompt }]
+    })
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || "Synthesis phase API error " + response.status);
+  }
+  const data = await response.json();
+  const raw = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+  // Strip markdown fences if present
+  const clean = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  // Find JSON object
+  const start = clean.indexOf("{");
+  const end = clean.lastIndexOf("}");
+  if (start === -1 || end === -1) throw new Error("No JSON found in synthesis response");
+  const jsonStr = clean.slice(start, end + 1);
+  try {
+    return JSON.parse(jsonStr);
+  } catch(e) {
+    // Try to salvage with a repair
+    const repaired = jsonStr
+      .replace(/,\s*}/g, "}")
+      .replace(/,\s*]/g, "]")
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ");
+    return JSON.parse(repaired);
+  }
+}
+
+// ============================================================
+// MAIN CALL ORCHESTRATOR
+// ============================================================
 async function callClaude(prompt, apiKey, onProgress) {
-  // Split prompt into search phase and synthesis phase
   const splitMarker = "After ALL searches, synthesize findings.";
   const splitIdx = prompt.indexOf(splitMarker);
   const searchPrompt = splitIdx > -1
@@ -308,30 +242,58 @@ CRITICAL JSON RULES:
 3. No XML/HTML tags in any string values - plain text only
 4. Use the OHLC price data in the research to determine sweep phases from actual candle math
 
-` + prompt.slice(prompt.indexOf("Output ONLY"));
+Output ONLY this JSON structure (fill ALL fields with real data from the research):
+{
+  "weekOf": "...",
+  "generatedAt": "...",
+  "overallBias": "RISK-ON or RISK-OFF or DEFENSIVE or NEUTRAL or ROTATION",
+  "biasStrength": "STRONG or MODERATE or WEAK",
+  "oneLiner": "...",
+  "lastWeekRecap": "...",
+  "watchlist": [{"ticker":"","name":"","type":"","direction":"LONG or SHORT","conviction":"HIGH or MEDIUM or LOW","sweepStatus":"","timeframeAlignment":"","reason":"","catalyst":"","keyLevel":"","liquidityTarget":""}],
+  "avoidList": [{"ticker":"","name":"","reason":"","trapWarning":""}],
+  "sectorRanking": [{"etf":"","name":"","rank":1,"flow":"","sweepPhase":"","note":""}],
+  "liquiditySweepMap": [{"ticker":"","recentSweep":"","rejected":"YES or NO","signal":"","implication":""}],
+  "keyEvents": [{"day":"","time":"","name":"","impact":"HIGH or MEDIUM or LOW","impact_note":""}],
+  "scenarios": [{"type":"BULL","trigger":"","result":""},{"type":"BEAR","trigger":"","result":""},{"type":"BASE","trigger":"","result":""}],
+  "cot": {
+    "nq": {"commercialNet":"LONG or SHORT or NEUTRAL","largeSpecNet":"LONG or SHORT or NEUTRAL","largeSpecExtreme":"YES or NO","signal":"","interpretation":""},
+    "es": {"commercialNet":"LONG or SHORT or NEUTRAL","largeSpecNet":"LONG or SHORT or NEUTRAL","largeSpecExtreme":"YES or NO","signal":"","interpretation":""},
+    "overallCotBias": "BULLISH or BEARISH or MIXED or NEUTRAL",
+    "cotNote": "..."
+  },
+  "flowSources": ["..."],
+  "analystNote": "..."
+}`;
 
-  if (onProgress) onProgress(0);
-  // Fetch real OHLC data first -- this runs in parallel with loading animation
+  if (onProgress) onProgress(0, 0);
+
+  // Fetch real OHLC data
   let ohlcText = '';
   let ohlcData = {};
   try {
     ohlcData = await fetchAllOHLC();
     ohlcText = formatOHLCForPrompt(ohlcData);
-    window.__lastOHLC = ohlcData; console.log("OHLC_KEYS:", Object.keys(ohlcData).join(","), "QQQ:", JSON.stringify(ohlcData.QQQ?.lastWeek));
+    window.__lastOHLC = ohlcData;
   } catch(e) {
     ohlcText = '[OHLC fetch failed -- using web search data only]';
   }
-  
-  // Inject OHLC data into search prompt
+
+  // Inject OHLC into search prompt
   const enrichedSearchPrompt = searchPrompt + '\n\n' + ohlcText;
+
+  // Phase 1: Search
   const research = await searchPhase(enrichedSearchPrompt, apiKey, onProgress);
-  if (onProgress) onProgress(13);
-  // Compress research to stay under token limits (keep first 6000 chars)
+  if (onProgress) onProgress(13, 12);
+
+  // Compress research
   const compressedResearch = research.length > 10000
     ? research.slice(0, 10000) + "\n[...additional research truncated for token efficiency]"
     : research;
+
+  // Phase 2: Synthesize
   const forecast = await synthesizePhase(compressedResearch, synthesisPrompt, apiKey);
-  
+
   // POST-PROCESS: Override liquiditySweepMap with REAL OHLC prices
   if (forecast.liquiditySweepMap && ohlcData && Object.keys(ohlcData).length > 0) {
     forecast.liquiditySweepMap = forecast.liquiditySweepMap.map(entry => {
@@ -360,9 +322,8 @@ CRITICAL JSON RULES:
       return { ...entry, recentSweep, signal: sig };
     });
   }
-  
 
-  // POST-PROCESS: Override watchlist keyLevel and liquidityTarget with REAL OHLC prices
+  // POST-PROCESS: Override watchlist with REAL OHLC prices
   if (forecast.watchlist && ohlcData && Object.keys(ohlcData).length > 0) {
     forecast.watchlist = forecast.watchlist.map(item => {
       const real = ohlcData[item.ticker];
@@ -373,32 +334,15 @@ CRITICAL JSON RULES:
       let keyLevel = item.keyLevel;
       let liquidityTarget = item.liquidityTarget;
       if (isLong) {
-        if (real.phase === 'ACCUMULATION' && pl) {
-          keyLevel = pl.toFixed(2) + ' swept low';
-          liquidityTarget = ph ? 'Prior week high ' + ph.toFixed(2) : liquidityTarget;
-        } else if (real.phase === 'COILING' && pl) {
-          keyLevel = pl.toFixed(2) + ' range low support';
-          liquidityTarget = ph ? 'Range high ' + ph.toFixed(2) : liquidityTarget;
-        } else if (real.phase === 'ROUNDTRIP BULLISH') {
-          keyLevel = low.toFixed(2) + ' roundtrip low';
-          liquidityTarget = high.toFixed(2) + ' recent high';
-        } else if (ph && pl) {
-          keyLevel = low.toFixed(2) + ' week low';
-          liquidityTarget = ph.toFixed(2) + ' prior high';
-        }
+        if (real.phase === 'ACCUMULATION' && pl) { keyLevel = pl.toFixed(2) + ' swept low'; liquidityTarget = ph ? 'Prior week high ' + ph.toFixed(2) : liquidityTarget; }
+        else if (real.phase === 'COILING' && pl) { keyLevel = pl.toFixed(2) + ' range low support'; liquidityTarget = ph ? 'Range high ' + ph.toFixed(2) : liquidityTarget; }
+        else if (real.phase === 'ROUNDTRIP BULLISH') { keyLevel = low.toFixed(2) + ' roundtrip low'; liquidityTarget = high.toFixed(2) + ' recent high'; }
+        else if (ph && pl) { keyLevel = low.toFixed(2) + ' week low'; liquidityTarget = ph.toFixed(2) + ' prior high'; }
       } else {
-        if (real.phase === 'DISTRIBUTION' && ph) {
-          keyLevel = ph.toFixed(2) + ' swept high';
-          liquidityTarget = pl ? 'Prior week low ' + pl.toFixed(2) : liquidityTarget;
-        } else if (real.phase === 'COILING' && ph) {
-          keyLevel = ph.toFixed(2) + ' range high resistance';
-          liquidityTarget = pl ? 'Range low ' + pl.toFixed(2) : liquidityTarget;
-        } else if (ph && pl) {
-          keyLevel = high.toFixed(2) + ' week high';
-          liquidityTarget = pl.toFixed(2) + ' prior low';
-        }
+        if (real.phase === 'DISTRIBUTION' && ph) { keyLevel = ph.toFixed(2) + ' swept high'; liquidityTarget = pl ? 'Prior week low ' + pl.toFixed(2) : liquidityTarget; }
+        else if (real.phase === 'COILING' && ph) { keyLevel = ph.toFixed(2) + ' range high resistance'; liquidityTarget = pl ? 'Range low ' + pl.toFixed(2) : liquidityTarget; }
+        else if (ph && pl) { keyLevel = high.toFixed(2) + ' week high'; liquidityTarget = pl.toFixed(2) + ' prior low'; }
       }
-      // Also override reason with real price text
       let reason = item.reason;
       if (ph && pl) {
         const phS = ph.toFixed(2), plS = pl.toFixed(2), cS = close.toFixed(2), hS = high.toFixed(2), lS = low.toFixed(2);
@@ -415,8 +359,12 @@ CRITICAL JSON RULES:
     });
   }
 
-    return forecast;
+  return forecast;
 }
+
+// ============================================================
+// UI COMPONENTS
+// ============================================================
 
 function ConvictionBar({ level, color }) {
   const w = level === "HIGH" ? 100 : level === "MEDIUM" ? 60 : 30;
@@ -457,9 +405,9 @@ function WatchCard({ item, rank }) {
           <div style={{ fontSize:"12px", color:"#6a9a7a", lineHeight:"1.7", marginBottom:"8px" }}>{item.reason}</div>
           {sweep && (
             <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginBottom:"4px" }}>
-              <span style={{ fontSize:"9px", color:sweepCol, border:'1px solid '+sweepCol+'44', borderRadius:"2px", padding:"2px 7px", letterSpacing:"1px" }}> {sweep}</span>
+              <span style={{ fontSize:"9px", color:sweepCol, border:'1px solid '+sweepCol+'44', borderRadius:"2px", padding:"2px 7px", letterSpacing:"1px" }}>{sweep}</span>
               {item.timeframeAlignment && (
-                <span style={{ fontSize:"9px", color:tfCol, border:'1px solid '+tfCol+'44', borderRadius:"2px", padding:"2px 7px", letterSpacing:"1px" }}> {item.timeframeAlignment}</span>
+                <span style={{ fontSize:"9px", color:tfCol, border:'1px solid '+tfCol+'44', borderRadius:"2px", padding:"2px 7px", letterSpacing:"1px" }}>{item.timeframeAlignment}</span>
               )}
             </div>
           )}
@@ -475,7 +423,7 @@ function WatchCard({ item, rank }) {
       </div>
       {item.catalyst && (
         <div style={{ marginTop:"10px", paddingTop:"8px", borderTop:"1px solid #0a2a0a", fontSize:"11px", color:"#ffaa00", letterSpacing:"1px" }}>
-           CATALYST: {item.catalyst}
+          CATALYST: {item.catalyst}
         </div>
       )}
     </div>
@@ -528,6 +476,9 @@ function ScenarioCard({ scenario }) {
   );
 }
 
+// ============================================================
+// MAIN APP
+// ============================================================
 function App() {
   const [scanning, setScanning] = useState(false);
   const [step,     setStep]     = useState(0);
@@ -538,6 +489,8 @@ function App() {
   const [keyInput, setKeyInput] = useState(() => localStorage.getItem("wrf_api_key") || "");
   const [keySaved, setKeySaved] = useState(false);
   const [tick,     setTick]     = useState(0);
+  const [searchCount, setSearchCount] = useState(0);
+  const [iterCount,  setIterCount]  = useState(0);
 
   useEffect(() => {
     const t = setInterval(() => setTick(x => x+1), 500);
@@ -556,26 +509,21 @@ function App() {
     setTimeout(() => setKeySaved(false), 2000);
   }
 
-  const [searchCount, setSearchCount] = React.useState(0);
-  const [iterCount,  setIterCount]  = React.useState(0);
-
   async function runScan() {
     if (!apiKey) { setError("Enter your Anthropic API key above first."); return; }
     setScanning(true); setStep(0); setProgress(0); setData(null); setError(null);
     setSearchCount(0); setIterCount(0);
 
-    // Animate loading steps in background while real API call runs
     const stepInterval = setInterval(() => {
       setStep(s => {
         const next = s + 1;
-        setProgress((next / LOADING_STEPS.length) * 85); // cap at 85% until done
+        setProgress((next / LOADING_STEPS.length) * 85);
         return next < LOADING_STEPS.length - 1 ? next : LOADING_STEPS.length - 1;
       });
-    }, 4000); // slower -- 4s per step since scan takes longer now
+    }, 4000);
 
     const today = new Date();
     const weekStr = today.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
-    // Find next Monday
     const nextMon = new Date(today);
     nextMon.setDate(today.getDate() + (1 + 7 - today.getDay()) % 7 || 7);
     const nextFri = new Date(nextMon);
@@ -593,131 +541,43 @@ Institutional money moves by sweeping liquidity at key structural levels then re
 - SFP (Swing Failure Pattern): Single candle wick through key level, closes back = EARLY WARNING of flow reversal before confirmation
 - LETHAL INJECTION: SFP at key level + weekly timeframe confirms rejection = MAXIMUM CONVICTION signal
 - ROUNDTRIP BULLISH: Asset swept highs first (distribution), then swept lows (accumulation) = primed to return to highs = HIGHEST CONVICTION LONG
-- CONFLICTING SIGNAL TRAP: Daily shows inflow but weekly structure is distributing = institutional money EXITING into retail buying = EXPLICIT TRAP, do NOT recommend
+- CONFLICTING SIGNAL TRAP: Daily shows inflow but weekly structure is distributing = institutional money EXITING into retail buying = EXPLICIT TRAP
 
 === TIMEFRAME CONVICTION WEIGHTING ===
 Weekly sweep + rejection + daily confirmation = HIGH conviction (flag as LETHAL INJECTION if SFP present)
 Weekly sweep + rejection only = MEDIUM-HIGH conviction
 Daily sweep + rejection only = BASE conviction
-Daily signal conflicting with weekly = TRAP -- put in avoidList with TRAP warning, never in watchlist
+Daily signal conflicting with weekly = TRAP -- put in avoidList with TRAP warning
 
 === SWEEP PHASE CLASSIFICATION ===
 For each major asset/sector, determine its current phase:
 - ACCUMULATION: Lows recently swept + rejected, weekly close back above swept level
 - DISTRIBUTION: Highs recently swept + rejected, weekly close back below swept level
-- COILING: Inside prior range, neither side swept yet, resting liquidity building on both sides
+- COILING: Inside prior range, neither side swept yet
 - ROUNDTRIP BULLISH: Both sides swept, lows swept LAST = highest conviction long
 - ROUNDTRIP BEARISH: Both sides swept, highs swept LAST = highest conviction short
 
-=== COT RULES (cross-reference with sweep structure) ===
+=== COT RULES ===
 - COMMERCIALS = smart money. FOLLOW their net direction.
 - LARGE SPECS = trend chasers. At extremes, FADE them.
-- SMALL SPECS = almost always wrong at extremes. FADE them.
 - LETHAL INJECTION upgrade: Commercials net long + weekly low sweep rejected = maximum conviction
-- CROWDED TRAP: Large specs at extreme long + highs recently swept + rejected = distribution trap
 
 === SEARCH INSTRUCTIONS ===
 Run ALL 12 searches before synthesizing. Each provides a distinct data layer:
-1. "ETF fund flows week ${weekStr} site:etf.com OR site:vettafi.com" -- ETF inflow/outflow data
-2. "sector rotation money flow ${weekStr}" -- which sectors gaining/losing capital
-3. "unusual whales options flow dark pool ${weekStr}" -- institutional options & dark pool
-4. "barchart options sentiment put call ratio sector ETF ${weekStr}" -- options sentiment by sector
-5. "CME fedwatch fed funds rate probability ${weekStr}" -- rate expectations
-6. "AAII sentiment survey bull bear ${weekStr}" -- retail sentiment extremes
-7. "CFTC COT report NQ ES futures commercial large speculator net position latest 2026" -- COT smart money
-8. "barchart COT commitments of traders NQ ES ${weekStr}" -- COT levels & visualization
-9. "SPX QQQ NQ weekly chart key levels support resistance sweep ${weekStr}" -- price structure
-10. "XLF XLK XLE XLV XLI XLY sector ETF weekly chart structure ${weekStr}" -- sector structure
-11. "macro economic calendar week ${weekAhead} CPI FOMC jobs earnings" -- catalysts
-12. "institutional 13F sector positioning financial news ${weekStr} Bloomberg Reuters" -- institutional flow
+1. "ETF fund flows week ${weekStr} site:etf.com OR site:vettafi.com"
+2. "sector rotation money flow ${weekStr}"
+3. "unusual whales options flow dark pool ${weekStr}"
+4. "barchart options sentiment put call ratio sector ETF ${weekStr}"
+5. "CME fedwatch fed funds rate probability ${weekStr}"
+6. "AAII sentiment survey bull bear ${weekStr}"
+7. "CFTC COT report NQ ES futures commercial large speculator net position latest 2026"
+8. "barchart COT commitments of traders NQ ES ${weekStr}"
+9. "SPX QQQ NQ weekly chart key levels support resistance sweep ${weekStr}"
+10. "XLF XLK XLE XLV XLI XLY sector ETF weekly chart structure ${weekStr}"
+11. "macro economic calendar week ${weekAhead} CPI FOMC jobs earnings"
+12. "institutional 13F sector positioning financial news ${weekStr} Bloomberg Reuters"
 
-After ALL 12 searches, classify each major asset into its sweep phase. Apply the framework above to all data. Output ONLY this JSON (no markdown, no backticks):
-{
-  "weekOf": "${weekAhead}",
-  "generatedAt": "${weekStr}",
-  "overallBias": "RISK-ON or RISK-OFF or DEFENSIVE or NEUTRAL or ROTATION",
-  "biasStrength": "STRONG or MODERATE or WEAK",
-  "oneLiner": "one punchy sentence -- lead with the dominant sweep signal",
-  "lastWeekRecap": "2 sentences -- specifically note major liquidity sweeps or rejections that occurred last week",
-  "watchlist": [
-    {
-      "ticker": "QQQ",
-      "name": "Invesco QQQ Trust",
-      "type": "ETF or INDEX or STOCK",
-      "direction": "LONG or SHORT",
-      "conviction": "HIGH or MEDIUM or LOW",
-      "sweepStatus": "LOWS SWEPT + REJECTED or HIGHS SWEPT + REJECTED or ROUNDTRIP BULLISH or ROUNDTRIP BEARISH or COILING or SFP WARNING or LETHAL INJECTION",
-      "timeframeAlignment": "WEEKLY + DAILY or WEEKLY ONLY or DAILY ONLY",
-      "reason": "data-backed reason referencing sweep structure and flow data",
-      "catalyst": "specific event or data point",
-      "keyLevel": "the swept level or key structural zone",
-      "liquidityTarget": "next resting liquidity pool -- where price is structurally drawn to"
-    }
-  ],
-  "avoidList": [
-    {
-      "ticker": "XLU",
-      "name": "Utilities Select SPDR",
-      "reason": "specific structural reason",
-      "trapWarning": "CONFLICTING SIGNAL TRAP or DISTRIBUTION PHASE or CROWDED TRADE or HIGHS SWEPT UNREJECTED"
-    }
-  ],
-  "sectorRanking": [
-    {
-      "etf": "XLK",
-      "name": "Technology",
-      "rank": 1,
-      "flow": "STRONG IN or MODERATE IN or NEUTRAL or MODERATE OUT or STRONG OUT",
-      "sweepPhase": "ACCUMULATION or DISTRIBUTION or COILING or ROUNDTRIP BULLISH or ROUNDTRIP BEARISH",
-      "note": "brief structural note on sweep status"
-    }
-  ],
-  "liquiditySweepMap": [
-    {
-      "ticker": "QQQ",
-      "recentSweep": "direction and approximate price level of most recent sweep",
-      "rejected": "YES or NO",
-      "signal": "ACCUMULATION or DISTRIBUTION or SFP WARNING or LETHAL INJECTION or NONE",
-      "implication": "what this sweep means for institutional money flow this week"
-    }
-  ],
-  "keyEvents": [
-    {
-      "day": "Monday",
-      "time": "8:30am ET",
-      "name": "Event name",
-      "impact": "HIGH or MEDIUM or LOW",
-      "impact_note": "how this event could trigger a liquidity sweep or accelerate current flow rotation"
-    }
-  ],
-  "scenarios": [
-    { "type": "BULL", "trigger": "what sweep confirmation or catalyst makes this bullish", "result": "which assets complete accumulation sweeps, where money flows" },
-    { "type": "BEAR", "trigger": "what sweep or catalyst makes this bearish", "result": "which assets complete distribution sweeps, where money rotates out" },
-    { "type": "BASE", "trigger": "most likely structural path this week", "result": "expected sweep sequence and rotation flow direction" }
-  ],
-  "cot": {
-    "nq": {
-      "commercialNet": "LONG or SHORT or NEUTRAL",
-      "largeSpecNet": "LONG or SHORT or NEUTRAL",
-      "largeSpecExtreme": "YES or NO",
-      "signal": "STRONG LONG or CROWDED LONG or STRONG SHORT or CROWDED SHORT or NEUTRAL",
-      "interpretation": "does COT confirm or conflict with the current NQ sweep structure? Lethal injection if both align."
-    },
-    "es": {
-      "commercialNet": "LONG or SHORT or NEUTRAL",
-      "largeSpecNet": "LONG or SHORT or NEUTRAL",
-      "largeSpecExtreme": "YES or NO",
-      "signal": "STRONG LONG or CROWDED LONG or STRONG SHORT or CROWDED SHORT or NEUTRAL",
-      "interpretation": "does COT confirm or conflict with the current ES sweep structure?"
-    },
-    "overallCotBias": "BULLISH or BEARISH or MIXED or NEUTRAL",
-    "cotNote": "how COT positioning aligns with sweep structure -- call out lethal injection if commercials net long + weekly low sweep confirmed"
-  },
-  "flowSources": ["actual sources found and used"],
-  "analystNote": "2-3 sentences -- lead with the single most important liquidity sweep signal this week. What structural move is setting up that most traders will completely miss? Where is institutional money actually positioned right now based on sweep evidence?"
-}
-
-5-8 watchlist items (mix NQ/QQQ/SPX/SPY, sector ETFs, high-conviction plays). 3-5 avoid items with trap warnings. All 11 sectors in sectorRanking with sweep phase. 5-8 items in liquiditySweepMap. 4-6 key events. Be SPECIFIC with price levels and sweep structure. Use real data from searches.`;
+After ALL searches, synthesize findings. Write a detailed plain-text summary covering all data found.`;
 
     try {
       const d = await callClaude(prompt, apiKey, (iterNum, searchNum) => {
@@ -726,7 +586,8 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
       });
       setProgress(100);
       setStep(LOADING_STEPS.length - 1);
-      window.__lastForecast = d; console.log("FORECAST_KEYS:", JSON.stringify(Object.keys(d))); console.log("HAS_SWEEP:", !!d.liquiditySweepMap, "LEN:", d.liquiditySweepMap?.length); console.log("HAS_COT:", !!d.cot); setData(d);
+      window.__lastForecast = d;
+      setData(d);
     } catch(e) {
       setError("Scan failed: " + e.message);
     } finally {
@@ -745,15 +606,13 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
         <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(0,255,136,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,0.02) 1px,transparent 1px)", backgroundSize:"30px 30px", pointerEvents:"none" }}/>
         <div style={{ position:"relative" }}>
           <div style={{ fontSize:"10px", color:"#2a5a3a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"4px" }}>TEDDY7844 - TRADING INTELLIGENCE</div>
-          <div style={{ fontSize:"20px", fontWeight:"700", color:"#00ff88", letterSpacing:"3px", textTransform:"uppercase", fontFamily:"'Rajdhani',sans-serif" }}>
-             WEEKLY ROTATION FORECAST
-          </div>
+          <div style={{ fontSize:"20px", fontWeight:"700", color:"#00ff88", letterSpacing:"3px", textTransform:"uppercase", fontFamily:"'Rajdhani',sans-serif" }}>WEEKLY ROTATION FORECAST</div>
           <div style={{ fontSize:"11px", color:"#3a6a4a", letterSpacing:"3px", marginTop:"3px" }}>WHERE IS MONEY MOVING THIS WEEK - SUNDAY PREP BRIEF</div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:"12px", position:"relative" }}>
-          {data && <div style={{ fontSize:"11px", color:"#00ff88", letterSpacing:"2px", border:"1px solid #00ff8844", borderRadius:"2px", padding:"4px 10px" }}> LIVE DATA</div>}
+          {data && <div style={{ fontSize:"11px", color:"#00ff88", letterSpacing:"2px", border:"1px solid #00ff8844", borderRadius:"2px", padding:"4px 10px" }}>LIVE DATA</div>}
           <button onClick={runScan} disabled={scanning} style={{ background:scanning?"#0a0f0a":"linear-gradient(135deg,#002a10,#004a1a)", border:`1px solid ${scanning?"#1a3a1a":"#00aa44"}`, borderRadius:"3px", color:scanning?"#2a5a3a":"#00ff88", fontFamily:"'Share Tech Mono',monospace", fontSize:"13px", fontWeight:"700", letterSpacing:"2px", padding:"10px 26px", cursor:scanning?"not-allowed":"pointer", textTransform:"uppercase", boxShadow:scanning?"none":"0 0 20px #00ff8822" }}>
-            {scanning ? <span> SCANNING<span className="blink">_</span></span> : "> RUN WEEKLY SCAN"}
+            {scanning ? <span>SCANNING<span className="blink">_</span></span> : "> RUN WEEKLY SCAN"}
           </button>
         </div>
       </div>
@@ -782,10 +641,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           <div style={{ background:"#0a1a0a", border:"1px solid #0a2a0a", borderRadius:"2px", height:"4px", margin:"24px 0", overflow:"hidden" }}>
             <div style={{ height:"100%", background:"linear-gradient(90deg,#002a10,#00ff88)", width:`${progress}%`, transition:"width 0.8s ease" }}/>
           </div>
-          <div style={{ textAlign:"center", fontSize:"11px", color:"#1a4a2a", letterSpacing:"3px", display:"flex", justifyContent:"center", gap:"20px" }}>
-            <span>SEARCHING 8 DATA SOURCES</span>
-            {iterCount > 0 && <span style={{color:"#2a6a4a"}}>- API LOOP {iterCount}/15</span>}
-          </div>
+          <div style={{ textAlign:"center", fontSize:"11px", color:"#1a4a2a", letterSpacing:"3px" }}>SEARCHING 12 DATA SOURCES</div>
         </div>
       )}
 
@@ -793,11 +649,11 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
 
       {!scanning && !data && !error && (
         <div style={{ textAlign:"center", padding:"80px 20px", color:"#1a4a2a" }}>
-          <div style={{ fontSize:"48px", marginBottom:"16px", opacity:0.3 }}></div>
+          <div style={{ fontSize:"48px", marginBottom:"16px", opacity:0.3 }}>◈</div>
           <div style={{ fontSize:"14px", letterSpacing:"4px", textTransform:"uppercase", color:"#2a6a3a" }}>WEEKLY ROTATION INTELLIGENCE</div>
           <div style={{ fontSize:"11px", color:"#1a3a2a", marginTop:"10px", letterSpacing:"2px", lineHeight:"1.8" }}>
             Run on Sunday evening for your weekly trade prep<br/>
-            Searches 10+ data sources for real institutional flow data
+            Searches 12 data sources for real institutional flow data
           </div>
         </div>
       )}
@@ -818,7 +674,6 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
             </div>
           </div>
 
-          {/* LAST WEEK RECAP */}
           {data.lastWeekRecap && (
             <div style={{ background:"#050a06", border:"1px solid #0a1a0a", borderRadius:"3px", padding:"12px 18px", marginBottom:"16px" }}>
               <div style={{ fontSize:"10px", color:"#2a5a3a", letterSpacing:"3px", marginBottom:"6px" }}>LAST WEEK RECAP</div>
@@ -827,25 +682,20 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           )}
 
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px", marginBottom:"16px" }}>
-
-            {/* WATCHLIST */}
             <div style={{ gridColumn:"1 / -1" }}>
-              <div style={{ fontSize:"11px", color:"#2a6a3a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a2a0a", display:"flex", alignItems:"center", gap:"10px" }}>
-                <span>> THIS WEEK WATCHLIST</span>
-                <span style={{ color:"#1a3a1a" }}>- TICKERS TO FOCUS ON</span>
+              <div style={{ fontSize:"11px", color:"#2a6a3a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a2a0a" }}>
+                > THIS WEEK WATCHLIST - TICKERS TO FOCUS ON
               </div>
-              {data.watchlist?.map((item, i) => <WatchCard key={item.ticker} item={item} rank={i+1}/>)}
+              {data.watchlist?.map((item, i) => <WatchCard key={item.ticker+i} item={item} rank={i+1}/>)}
             </div>
 
-            {/* AVOID LIST */}
             <div>
-              <div style={{ fontSize:"11px", color:"#6a2a2a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #2a0a0a" }}> AVOID THIS WEEK</div>
-              {data.avoidList?.map(item => <AvoidCard key={item.ticker} item={item}/>)}
+              <div style={{ fontSize:"11px", color:"#6a2a2a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #2a0a0a" }}>AVOID THIS WEEK</div>
+              {data.avoidList?.map((item,i) => <AvoidCard key={item.ticker+i} item={item}/>)}
             </div>
 
-            {/* SECTOR RANKING */}
             <div>
-              <div style={{ fontSize:"11px", color:"#2a5a6a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a1a2a" }}> SECTOR FLOW RANKING</div>
+              <div style={{ fontSize:"11px", color:"#2a5a6a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a1a2a" }}>SECTOR FLOW RANKING</div>
               <div style={{ display:"grid", gap:"5px" }}>
                 {data.sectorRanking?.sort((a,b)=>a.rank-b.rank).map(s => {
                   const isIn = s.flow?.includes("IN");
@@ -874,22 +724,18 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           {data.liquiditySweepMap?.length > 0 && (
             <div style={{ marginBottom:"16px" }}>
               <div style={{ fontSize:"11px", color:"#00cc66", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #003322" }}>
-                 LIQUIDITY SWEEP MAP - INSTITUTIONAL FLOW STRUCTURE
+                LIQUIDITY SWEEP MAP - INSTITUTIONAL FLOW STRUCTURE
               </div>
               <div style={{ display:"grid", gap:"8px" }}>
                 {data.liquiditySweepMap.map((item, i) => {
                   const sig = item.signal || "";
-                  const sigCol = sig === "LETHAL INJECTION" ? "#00ff88"
-                    : sig === "ACCUMULATION"  ? "#44dd88"
-                    : sig === "SFP WARNING"   ? "#ffaa00"
-                    : sig === "DISTRIBUTION"  ? "#ff3366"
-                    : "#666688";
+                  const sigCol = sig === "LETHAL INJECTION" ? "#00ff88" : sig === "ACCUMULATION" ? "#44dd88" : sig === "SFP WARNING" ? "#ffaa00" : sig === "DISTRIBUTION" ? "#ff3366" : "#666688";
                   const rejCol = item.rejected === "YES" ? "#00ff88" : "#ff3366";
                   return (
                     <div key={i} style={{ background:"#050e08", border:'1px solid '+sigCol+'22', borderLeft:`3px solid ${sigCol}66`, borderRadius:"3px", padding:"12px 16px", display:"grid", gridTemplateColumns:"80px 1fr 1fr auto", gap:"12px", alignItems:"start" }}>
                       <div>
                         <div style={{ fontSize:"15px", fontWeight:"700", color:"#c8f0d8", fontFamily:"'Rajdhani',sans-serif", letterSpacing:"1px" }}>{item.ticker}</div>
-                        <div style={{ fontSize:"9px", color:rejCol, letterSpacing:"2px", marginTop:"3px" }}>{item.rejected === "YES" ? "v REJECTED" : " NO REJECT"}</div>
+                        <div style={{ fontSize:"9px", color:rejCol, letterSpacing:"2px", marginTop:"3px" }}>{item.rejected === "YES" ? "v REJECTED" : "NO REJECT"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize:"9px", color:"#2a5a3a", letterSpacing:"2px", marginBottom:"4px" }}>RECENT SWEEP</div>
@@ -909,72 +755,15 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
             </div>
           )}
 
-          {/* SWEEP PHASE MAP */}
-          {data.sweepPhaseMap?.length > 0 && (
-            <div style={{ marginBottom:"16px" }}>
-              <div style={{ fontSize:"11px", color:"#3a6a5a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a2a1a" }}>
-                 LIQUIDITY SWEEP PHASE MAP - INSTITUTIONAL POSITIONING
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px,1fr))", gap:"8px" }}>
-                {data.sweepPhaseMap.map((item, i) => {
-                  const phase = item.phase || "";
-                  const col = phase === "LETHAL INJECTION"    ? "#00ff88"
-                    : phase === "ROUNDTRIP BULLISH"           ? "#44ffaa"
-                    : phase === "ACCUMULATION"                ? "#44cc88"
-                    : phase === "SFP WARNING"                 ? "#ffcc00"
-                    : phase === "COILING"                     ? "#8888ff"
-                    : phase === "DISTRIBUTION"                ? "#ff6644"
-                    : phase === "ROUNDTRIP BEARISH"           ? "#ff3366"
-                    : "#666688";
-                  const phaseBg = phase === "LETHAL INJECTION"    ? "#001a0d"
-                    : phase === "ROUNDTRIP BULLISH"               ? "#001508"
-                    : phase === "ACCUMULATION"                    ? "#001008"
-                    : phase === "SFP WARNING"                     ? "#1a1400"
-                    : phase === "COILING"                         ? "#08080f"
-                    : phase === "DISTRIBUTION"                    ? "#1a0800"
-                    : phase === "ROUNDTRIP BEARISH"               ? "#1a0008"
-                    : "#080808";
-                  const phaseIcon = phase === "LETHAL INJECTION"    ? ""
-                    : phase === "ROUNDTRIP BULLISH"                 ? ""
-                    : phase === "ACCUMULATION"                      ? ""
-                    : phase === "SFP WARNING"                       ? "!"
-                    : phase === "COILING"                           ? ""
-                    : phase === "DISTRIBUTION"                      ? ""
-                    : phase === "ROUNDTRIP BEARISH"                 ? ""
-                    : "-";
-                  return (
-                    <div key={i} style={{ background:phaseBg, border:'1px solid '+col+'33', borderTop:'2px solid '+col, borderRadius:"3px", padding:"10px 12px" }}>
-                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"6px" }}>
-                        <div style={{ fontSize:"16px", fontWeight:"700", color:"#c8f0d8", fontFamily:"'Rajdhani',sans-serif", letterSpacing:"1px" }}>{item.ticker}</div>
-                        <div style={{ fontSize:"14px", color:col }}>{phaseIcon}</div>
-                      </div>
-                      <div style={{ fontSize:"9px", fontWeight:"700", color:col, letterSpacing:"2px", marginBottom:"6px", lineHeight:"1.3" }}>{phase}</div>
-                      <div style={{ display:"flex", gap:"4px", marginBottom:"6px", flexWrap:"wrap" }}>
-                        <span style={{ fontSize:"8px", color: item.rejected === "YES" ? "#00ff88" : "#ff6644", border:`1px solid ${item.rejected === "YES" ? "#00ff8844" : "#ff664444"}`, borderRadius:"2px", padding:"1px 5px" }}>
-                          {item.rejected === "YES" ? "v REJECTED" : " NO REJECT"}
-                        </span>
-                        <span style={{ fontSize:"8px", color: item.weeklyConfirmed === "YES" ? "#00ff88" : item.weeklyConfirmed === "PENDING" ? "#ffaa00" : "#ff6644", border:"1px solid #1a3a2a", borderRadius:"2px", padding:"1px 5px" }}>
-                          WKY: {item.weeklyConfirmed || "?"}
-                        </span>
-                      </div>
-                      <div style={{ fontSize:"10px", color:"#5a8a6a", lineHeight:"1.6" }}>{item.lastSweep}</div>
-                      {item.sequenceNote && <div style={{ fontSize:"10px", color:col+'99', lineHeight:"1.6", marginTop:"4px", borderTop:'1px solid '+col+'22', paddingTop:"4px" }}>{item.sequenceNote}</div>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* KEY EVENTS */}
           <div style={{ marginBottom:"16px" }}>
-            <div style={{ fontSize:"11px", color:"#2a4a6a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a1a2a" }}> KEY EVENTS THIS WEEK - FLOW MOVERS</div>
+            <div style={{ fontSize:"11px", color:"#2a4a6a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #0a1a2a" }}>KEY EVENTS THIS WEEK - FLOW MOVERS</div>
             {data.keyEvents?.map((e,i) => <EventCard key={i} event={e}/>)}
           </div>
 
           {/* SCENARIOS */}
           <div style={{ marginBottom:"16px" }}>
-            <div style={{ fontSize:"11px", color:"#4a4a2a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #1a1a0a" }}> WEEK SCENARIOS</div>
+            <div style={{ fontSize:"11px", color:"#4a4a2a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #1a1a0a" }}>WEEK SCENARIOS</div>
             <div style={{ display:"flex", gap:"10px", flexWrap:"wrap" }}>
               {data.scenarios?.map((s,i) => <ScenarioCard key={i} scenario={s}/>)}
             </div>
@@ -984,7 +773,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           {data.cot && (
             <div style={{ marginBottom:"16px" }}>
               <div style={{ fontSize:"11px", color:"#6a4a7a", letterSpacing:"4px", textTransform:"uppercase", marginBottom:"12px", paddingBottom:"7px", borderBottom:"1px solid #2a0a3a" }}>
-                 COT SMART MONEY POSITIONING - CFTC DATA
+                COT SMART MONEY POSITIONING - CFTC DATA
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"10px" }}>
                 {[["NQ FUTURES", data.cot.nq], ["ES / SPX FUTURES", data.cot.es]].map(([label, cot]) => {
@@ -999,12 +788,12 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
                         <div style={{ background:"#060410", borderRadius:"2px", padding:"8px 10px", border:"1px solid #1a0a2a" }}>
                           <div style={{ fontSize:"9px", color:"#4a2a6a", letterSpacing:"2px", marginBottom:"4px" }}>COMMERCIALS</div>
                           <div style={{ fontSize:"16px", fontWeight:"700", color:commCol, fontFamily:"'Rajdhani',sans-serif" }}>{cot.commercialNet}</div>
-                          <div style={{ fontSize:"9px", color:"#3a2a4a", marginTop:"3px" }}>SMART MONEY  FOLLOW</div>
+                          <div style={{ fontSize:"9px", color:"#3a2a4a", marginTop:"3px" }}>SMART MONEY - FOLLOW</div>
                         </div>
                         <div style={{ background:"#060410", borderRadius:"2px", padding:"8px 10px", border:"1px solid #1a0a2a" }}>
                           <div style={{ fontSize:"9px", color:"#4a2a6a", letterSpacing:"2px", marginBottom:"4px" }}>LARGE SPECS</div>
                           <div style={{ fontSize:"16px", fontWeight:"700", color:specCol, fontFamily:"'Rajdhani',sans-serif" }}>{cot.largeSpecNet}</div>
-                          <div style={{ fontSize:"9px", color:cot.largeSpecExtreme==="YES"?"#ffaa00":"#3a2a4a", marginTop:"3px" }}>{cot.largeSpecExtreme==="YES"?"! EXTREME -- FADE":"MODERATE POSITIONING"}</div>
+                          <div style={{ fontSize:"9px", color:cot.largeSpecExtreme==="YES"?"#ffaa00":"#3a2a4a", marginTop:"3px" }}>{cot.largeSpecExtreme==="YES"?"! EXTREME -- FADE":"MODERATE"}</div>
                         </div>
                       </div>
                       <div style={{ fontSize:"10px", letterSpacing:"2px", fontWeight:"700", color:sigCol, border:'1px solid '+sigCol+'44', borderRadius:"2px", padding:"4px 10px", display:"inline-block", marginBottom:"8px" }}>{cot.signal}</div>
@@ -1025,12 +814,11 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           {/* ANALYST NOTE */}
           {data.analystNote && (
             <div style={{ background:"#060808", border:"1px solid #ffaa0022", borderLeft:"3px solid #ffaa00", borderRadius:"3px", padding:"14px 18px", marginBottom:"16px" }}>
-              <div style={{ fontSize:"10px", color:"#aa7700", letterSpacing:"3px", marginBottom:"7px" }}> ANALYST NOTE - WHAT MOST TRADERS WILL MISS</div>
+              <div style={{ fontSize:"10px", color:"#aa7700", letterSpacing:"3px", marginBottom:"7px" }}>ANALYST NOTE - WHAT MOST TRADERS WILL MISS</div>
               <div style={{ fontSize:"13px", color:"#c8b888", lineHeight:"1.8" }}>{stripCite(data.analystNote)}</div>
             </div>
           )}
 
-          {/* DATA SOURCES */}
           {data.flowSources?.length > 0 && (
             <div style={{ background:"#050608", border:"1px solid #0a0a1a", borderRadius:"3px", padding:"10px 16px", marginBottom:"16px" }}>
               <div style={{ fontSize:"10px", color:"#2a2a5a", letterSpacing:"3px", marginBottom:"6px" }}>DATA SOURCES USED</div>
@@ -1043,7 +831,7 @@ After ALL 12 searches, classify each major asset into its sweep phase. Apply the
           )}
 
           <div style={{ fontSize:"10px", color:"#1a3a2a", textAlign:"right", paddingTop:"10px", borderTop:"1px solid #0a1a0a", letterSpacing:"2px" }}>
-             GENERATED {data.generatedAt} - FOR WEEK OF {data.weekOf}
+            GENERATED {data.generatedAt} - FOR WEEK OF {data.weekOf}
           </div>
         </div>
       )}
