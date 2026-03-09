@@ -432,7 +432,48 @@ CRITICAL JSON RULES:
     });
   }
   
-  return forecast;
+
+  // POST-PROCESS: Override watchlist keyLevel and liquidityTarget with REAL OHLC prices
+  if (forecast.watchlist && ohlcData && Object.keys(ohlcData).length > 0) {
+    forecast.watchlist = forecast.watchlist.map(item => {
+      const real = ohlcData[item.ticker];
+      if (!real || !real.lastWeek) return item;
+      const { high, low, close } = real.lastWeek;
+      const { high: ph, low: pl } = real.priorWeek || {};
+      const isLong = item.direction === 'LONG';
+      let keyLevel = item.keyLevel;
+      let liquidityTarget = item.liquidityTarget;
+      if (isLong) {
+        if (real.phase === 'ACCUMULATION' && pl) {
+          keyLevel = pl.toFixed(2) + ' swept low';
+          liquidityTarget = ph ? 'Prior week high ' + ph.toFixed(2) : liquidityTarget;
+        } else if (real.phase === 'COILING' && pl) {
+          keyLevel = pl.toFixed(2) + ' range low support';
+          liquidityTarget = ph ? 'Range high ' + ph.toFixed(2) : liquidityTarget;
+        } else if (real.phase === 'ROUNDTRIP BULLISH') {
+          keyLevel = low.toFixed(2) + ' roundtrip low';
+          liquidityTarget = high.toFixed(2) + ' recent high';
+        } else if (ph && pl) {
+          keyLevel = low.toFixed(2) + ' week low';
+          liquidityTarget = ph.toFixed(2) + ' prior high';
+        }
+      } else {
+        if (real.phase === 'DISTRIBUTION' && ph) {
+          keyLevel = ph.toFixed(2) + ' swept high';
+          liquidityTarget = pl ? 'Prior week low ' + pl.toFixed(2) : liquidityTarget;
+        } else if (real.phase === 'COILING' && ph) {
+          keyLevel = ph.toFixed(2) + ' range high resistance';
+          liquidityTarget = pl ? 'Range low ' + pl.toFixed(2) : liquidityTarget;
+        } else if (ph && pl) {
+          keyLevel = high.toFixed(2) + ' week high';
+          liquidityTarget = pl.toFixed(2) + ' prior low';
+        }
+      }
+      return { ...item, keyLevel, liquidityTarget };
+    });
+  }
+
+    return forecast;
 }
 
 function ConvictionBar({ level, color }) {
