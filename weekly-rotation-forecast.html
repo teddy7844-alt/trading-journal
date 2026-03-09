@@ -213,149 +213,78 @@ function classifySweepPhase(candles) {
 }
 
 async function fetchAllOHLC(onProgress) {
+  const tickers = ['SPY','QQQ','XLE','XLB','XLI','XLF','XLK','XLV','XLP','XLY','XLU','XLRE','XLC','IWM','BTC-USD','ETH-USD','GLD','TLT','GDX','SOXX','SMH','XOP','USO','SLV'];
   const results = {};
-  for (let i = 0; i < OHLC_TICKERS.length; i++) {
-    const ticker = OHLC_TICKERS[i];
-    if (onProgress) onProgress(ticker);
-    const data = await fetchWeeklyOHLC(ticker);
-    if (data.candles.length > 0) {
-      results[ticker] = {
-        ...classifySweepPhase(data.candles),
-        candles: data.candles
-      };
-    }
+  for (let t = 0; t < tickers.length; t++) {
+    const ticker = tickers[t];
+    if (onProgress) onProgress(ticker, t, tickers.length);
+    try {
+      const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1wk&range=1y`;
+      const url = 'https://corsproxy.io/?' + encodeURIComponent(yahooUrl);
+      const res = await fetch(url);
+      const data = await res.json();
+      const q = data.chart.result[0];
+      const ohlc = q.indicators.quote[0];
+      const ts = q.timestamp;
+      const len = ts.length;
+      if (len < 4) continue;
+      const weeklyHistory = [];
+      for (let i = 0; i < len; i++) {
+        if (ohlc.high[i] == null) continue;
+        weeklyHistory.push({ date: new Date(ts[i]*1000).toISOString().slice(0,10), open: ohlc.open[i], high: ohlc.high[i], low: ohlc.low[i], close: ohlc.close[i] });
+      }
+      const wLen = weeklyHistory.length;
+      if (wLen < 4) continue;
+      const lastWeek = weeklyHistory[wLen-1];
+      const priorWeek = weeklyHistory[wLen-2];
+      const high52 = Math.max(...weeklyHistory.map(w => w.high));
+      const low52 = Math.min(...weeklyHistory.map(w => w.low));
+      const gov = weeklyHistory.slice(-12);
+      const mbIdx = gov.map(w => w.high - w.low).reduce((mi,v,i,a) => v > a[mi] ? i : mi, 0);
+      const motherBar = gov[mbIdx];
+      const mH = motherBar.high, mL = motherBar.low;
+      let highSweepWk = null, lowSweepWk = null;
+      for (let i = mbIdx+1; i < gov.length; i++) {
+        const w = gov[i];
+        if (!highSweepWk && w.high > mH && w.close < mH) highSweepWk = i;
+        if (!lowSweepWk && w.low < mL && w.close > mL) lowSweepWk = i;
+      }
+      const roundtripBull = highSweepWk !== null && lowSweepWk !== null && highSweepWk < lowSweepWk;
+      const roundtripBear = highSweepWk !== null && lowSweepWk !== null && lowSweepWk < highSweepWk;
+      const highSweptFirst = highSweepWk !== null && (lowSweepWk === null || highSweepWk < lowSweepWk);
+      const lowSweptFirst = lowSweepWk !== null && (highSweepWk === null || lowSweepWk < highSweepWk);
+      let weeklyBias = 'NEUTRAL';
+      if (roundtripBull) weeklyBias = 'BULLISH';
+      else if (roundtripBear) weeklyBias = 'BEARISH';
+      else if (lowSweptFirst) weeklyBias = 'BULLISH';
+      else if (highSweptFirst) weeklyBias = 'BEARISH';
+      const lH = lastWeek.high, lL = lastWeek.low, lC = lastWeek.close;
+      const pH = priorWeek.high, pL = priorWeek.low;
+      let phase = 'NEUTRAL';
+      if (lL < pL && lC > pL) phase = 'ACCUMULATION';
+      else if (lH > pH && lC < pH) phase = 'DISTRIBUTION';
+      else if (lH > pH && lL < pL) phase = (lC > (pH+pL)/2) ? 'ROUNDTRIP BULLISH' : 'ROUNDTRIP BEARISH';
+      else if (lH > pH && lC > pH) phase = 'BULLISH BREAKOUT';
+      else if (lL < pL && lC < pL) phase = 'BEARISH BREAKDOWN';
+      else if (lH < pH && lL > pL) phase = 'COILING';
+      const lethalCandidate = (phase === 'ACCUMULATION' || phase === 'DISTRIBUTION') && (Math.abs(lC-mL)/mL < 0.01 || Math.abs(lC-mH)/mH < 0.01);
+      const conflictingSignal = (weeklyBias === 'BEARISH' && phase === 'ACCUMULATION') || (weeklyBias === 'BULLISH' && phase === 'DISTRIBUTION');
+      results[ticker] = { lastWeek, priorWeek, weeklyHistory: gov, phase, weeklyBias, lethalCandidate, roundtripBull, roundtripBear, highSweptFirst, lowSweptFirst, conflictingSignal, high52, low52, motherBarHigh: mH, motherBarLow: mL };
+    } catch(e) { /* skip */ }
   }
   return results;
 }
 
 function formatOHLCForPrompt(ohlcData) {
-  let text = '=== REAL WEEKLY OHLC PRICE DATA (Yahoo Finance) ===\n';
-  text += 'Sweep phases calculated from actual candle math -- use these as ground truth:\n\n';
-  
+  const FW = 'NESTED IB FRAMEWORK RULES:\n3-Week bias governs Weekly governs Daily - hierarchy is ABSOLUTE.\nCONFLICT TRAP: single-week ACCUMULATION inside BEARISH weekly bias = DO NOT TRADE LONG (loses avg 42pts/5d).\nROUNDTRIP BULL (highs swept first THEN lows swept+rejected) = MAX CONVICTION LONG 1.5x size.\nROUNDTRIP BEAR (lows swept first THEN highs swept+rejected) = MAX CONVICTION AVOID/SHORT.\nLETHAL INJECTION = phase at mother bar level + weekly bias aligned = highest conviction signal.\nWEEKLY_BIAS sets direction. Single-week phase is entry timing only - never overrides weekly bias.\n\n';
+  let text = 'REAL OHLC (1yr weekly, Yahoo Finance via corsproxy):\n' + FW;
   for (const [ticker, data] of Object.entries(ohlcData)) {
-    text += `${ticker}: PHASE=${data.phase}\n`;
-    text += `  Last week: O${data.lastWeek?.open} H${data.lastWeek?.high} L${data.lastWeek?.low} C${data.lastWeek?.close}\n`;
-    text += `  Prior week: H${data.priorWeek?.high} L${data.priorWeek?.low}\n`;
-    text += `  Analysis: ${data.details}\n\n`;
+    if (!data.lastWeek) continue;
+    const recent = (data.weeklyHistory || []).slice(-6).map(w => `${w.date}:H${w.high?.toFixed(2)}L${w.low?.toFixed(2)}C${w.close?.toFixed(2)}`).join(' ');
+    const flags = [data.phase, data.weeklyBias?'WEEKLY_BIAS_'+data.weeklyBias:'', data.lethalCandidate?'LETHAL_INJECTION':'', data.roundtripBull?'ROUNDTRIP_BULL_MAX_CONVICTION':'', data.roundtripBear?'ROUNDTRIP_BEAR_MAX_CONVICTION':'', data.conflictingSignal?'CONFLICT_TRAP_DO_NOT_TRADE':'', data.highSweptFirst?'HIGH_SWEPT_FIRST':'', data.lowSweptFirst?'LOW_SWEPT_FIRST':''].filter(Boolean).join('|');
+    text += `${ticker}[${flags}] 52wkH:${data.high52?.toFixed(2)} 52wkL:${data.low52?.toFixed(2)} MBH:${data.motherBarHigh?.toFixed(2)} MBL:${data.motherBarLow?.toFixed(2)}\n  Recent6wks:${recent}\n`;
   }
   return text;
-}
-
-async function searchPhase(searchPrompt, apiKey, onProgress) {
-  // Phase 1: do all web searches, return raw research summary (no JSON required)
-  const headers = {
-    "Content-Type": "application/json",
-    "x-api-key": apiKey,
-    "anthropic-version": "2023-06-01",
-    "anthropic-dangerous-direct-browser-access": "true",
-  };
-  const tools = [{ type: "web_search_20250305", name: "web_search" }];
-  let messages = [{ role: "user", content: searchPrompt }];
-  for (let i = 0; i < 15; i++) {
-    if (onProgress) onProgress(i);
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST", headers,
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, tools, messages }),
-    });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
-    const raw = await res.json();
-    messages.push({ role: "assistant", content: raw.content });
-    if (raw.stop_reason === "end_turn") {
-      return raw.content.filter(b => b.type === "text").map(b => b.text).join("\n");
-    }
-    const toolUse = raw.content.filter(b => b.type === "tool_use");
-    if (!toolUse.length) {
-      return raw.content.filter(b => b.type === "text").map(b => b.text).join("\n");
-    }
-    messages.push({ role: "user", content: toolUse.map(b => ({ type: "tool_result", tool_use_id: b.id, content: b.content || "" })) });
-  }
-  throw new Error("Search phase max iterations reached");
-}
-
-async function synthesizePhase(researchSummary, synthesisPrompt, apiKey) {
-  // Phase 2: no web search -- just synthesize research into JSON
-  const headers = {
-    "Content-Type": "application/json",
-    "x-api-key": apiKey,
-    "anthropic-version": "2023-06-01",
-    "anthropic-dangerous-direct-browser-access": "true",
-  };
-  const fullPrompt = synthesisPrompt + "\n\n=== RESEARCH DATA ===\n" + researchSummary;
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST", headers,
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 8000,
-      messages: [{ role: "user", content: fullPrompt }]
-    }),
-  });
-  if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
-  const raw = await res.json();
-  const text = raw.content.filter(b => b.type === "text").map(b => b.text).join("\n");
-  const cleaned = text.replace(/```json|```/g, "").trim();
-  const m = cleaned.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error("No JSON in synthesis response");
-
-  function robustParse(jsonStr) {
-    // Attempt 1: direct parse
-    try { return JSON.parse(jsonStr); } catch(e1) {}
-    // Attempt 2: fix unescaped quotes inside string values
-    // Strategy: use a char-by-char state machine to find and escape bad quotes
-    try {
-      let fixed = "";
-      let inString = false;
-      let escaped = false;
-      let i = 0;
-      while (i < jsonStr.length) {
-        const ch = jsonStr[i];
-        const next = jsonStr[i+1];
-        if (escaped) { fixed += ch; escaped = false; i++; continue; }
-        if (ch === '\\') { fixed += ch; escaped = true; i++; continue; }
-        if (ch === '"' && !inString) { inString = true; fixed += ch; i++; continue; }
-        if (ch === '"' && inString) {
-          // Check if this is a legitimate closing quote
-          // A legitimate closing quote is followed by: , } ] whitespace newline :
-          let j = i + 1;
-          while (j < jsonStr.length && (jsonStr[j] === ' ' || jsonStr[j] === '\t')) j++;
-          const afterChar = jsonStr[j];
-          if ([',', '}', ']', ':', '\n', '\r'].includes(afterChar) || j >= jsonStr.length) {
-            inString = false; fixed += ch; i++; continue;
-          } else {
-            // Unescaped quote inside a string -- escape it
-            fixed += '\\"'; i++; continue;
-          }
-        }
-        fixed += ch; i++;
-      }
-      return JSON.parse(fixed);
-    } catch(e2) {}
-    // Attempt 3: fix truncation
-    try {
-      let fixed = jsonStr.replace(/,\s*"[^"]*$/, '').replace(/,\s*$/, '');
-      let opens = (fixed.match(/\[/g)||[]).length - (fixed.match(/\]/g)||[]).length;
-      let openb = (fixed.match(/\{/g)||[]).length - (fixed.match(/\}/g)||[]).length;
-      for (let i = 0; i < opens; i++) fixed += ']';
-      for (let i = 0; i < openb; i++) fixed += '}';
-      return JSON.parse(fixed);
-    } catch(e3) {
-      throw new Error("JSON parse failed after all attempts: " + e3.message);
-    }
-  }
-  const parsed = robustParse(m[0]);
-  // Strip ALL cite tags from every string field recursively
-  function stripAllCites(obj) {
-    if (typeof obj === 'string') {
-      return obj.replace(/<cite[^>]*>/gi, '').replace(/<\/cite>/gi, '').trim();
-    }
-    if (Array.isArray(obj)) return obj.map(stripAllCites);
-    if (obj && typeof obj === 'object') {
-      const out = {};
-      for (const k in obj) out[k] = stripAllCites(obj[k]);
-      return out;
-    }
-    return obj;
-  }
-  return stripAllCites(parsed);
 }
 
 async function callClaude(prompt, apiKey, onProgress) {
