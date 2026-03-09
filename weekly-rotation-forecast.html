@@ -96,10 +96,12 @@ const OHLC_TICKERS = [
 
 async function fetchWeeklyOHLC(ticker) {
   // Yahoo Finance v8 API -- 3 months of weekly data
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1wk&range=3mo`;
+  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1wk&range=3mo`;
+  const url = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
   try {
     const res = await fetch(url);
-    const data = await res.json();
+    const wrapper = await res.json();
+    const data = JSON.parse(wrapper.contents);
     const quotes = data.chart.result[0];
     const timestamps = quotes.timestamp;
     const ohlc = quotes.indicators.quote[0];
