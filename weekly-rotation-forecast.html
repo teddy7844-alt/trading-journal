@@ -469,7 +469,20 @@ CRITICAL JSON RULES:
           liquidityTarget = pl.toFixed(2) + ' prior low';
         }
       }
-      return { ...item, keyLevel, liquidityTarget };
+      // Also override reason with real price text
+      let reason = item.reason;
+      if (ph && pl) {
+        const phS = ph.toFixed(2), plS = pl.toFixed(2), cS = close.toFixed(2), hS = high.toFixed(2), lS = low.toFixed(2);
+        if (real.phase === 'ACCUMULATION') reason = 'Lows swept at ' + plS + ', rejected back above, close ' + cS + ' -- institutional accumulation';
+        else if (real.phase === 'DISTRIBUTION') reason = 'Highs swept at ' + phS + ', rejected back below, close ' + cS + ' -- institutional distribution';
+        else if (real.phase === 'ROUNDTRIP BULLISH') reason = 'Roundtrip bullish H' + phS + ' then L' + plS + ' swept, close ' + cS + ' -- max conviction long';
+        else if (real.phase === 'ROUNDTRIP BEARISH') reason = 'Roundtrip bearish L' + plS + ' then H' + phS + ' swept, close ' + cS + ' -- max conviction short';
+        else if (real.phase === 'COILING') reason = 'Coiling inside ' + plS + '-' + phS + ', close ' + cS + ' -- compression, await breakout';
+        else if (real.phase === 'BULLISH BREAKOUT') reason = 'Broke above prior high ' + phS + ', holding at ' + cS;
+        else if (real.phase === 'BEARISH BREAKDOWN') reason = 'Broke below prior low ' + plS + ', holding at ' + cS;
+        else reason = 'Range H' + hS + ' L' + lS + ' close ' + cS + ' vs prior H' + phS + ' L' + plS;
+      }
+      return { ...item, keyLevel, liquidityTarget, reason };
     });
   }
 
