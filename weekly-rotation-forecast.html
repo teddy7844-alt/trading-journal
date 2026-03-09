@@ -97,11 +97,10 @@ const OHLC_TICKERS = [
 async function fetchWeeklyOHLC(ticker) {
   // Yahoo Finance v8 API -- 3 months of weekly data
   const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1wk&range=3mo`;
-  const url = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
+  const url = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
   try {
     const res = await fetch(url);
-    const wrapper = await res.json();
-    const data = JSON.parse(wrapper.contents);
+    const data = await res.json();
     const quotes = data.chart.result[0];
     const timestamps = quotes.timestamp;
     const ohlc = quotes.indicators.quote[0];
@@ -389,6 +388,7 @@ CRITICAL JSON RULES:
   try {
     ohlcData = await fetchAllOHLC();
     ohlcText = formatOHLCForPrompt(ohlcData);
+    window.__lastOHLC = ohlcData; console.log("OHLC_KEYS:", Object.keys(ohlcData).join(","), "QQQ:", JSON.stringify(ohlcData.QQQ?.lastWeek));
   } catch(e) {
     ohlcText = '[OHLC fetch failed -- using web search data only]';
   }
