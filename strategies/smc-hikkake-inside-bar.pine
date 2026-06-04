@@ -1,0 +1,46 @@
+//@version=5
+strategy("SMC Hikkake / Inside Bar Failure", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+
+// --- Inputs ---
+rrRatio = input.float(2.0, title="Risk-to-Reward Ratio")
+lookbackBars = input.int(1, title="Fakeout Lookback Window")
+
+// --- Pattern Identification Logic ---
+// 1. Inside Bar definition (Candle -1 relative to Candle -2)
+isInsideBar = (high[1] < high[2]) and (low[1] > low[2])
+
+// 2. Fakeout / Liquidity Purge (Current candle sweeps below inside bar low)
+fakeoutDown = isInsideBar and (low < low[1])
+
+// Track setup state
+var bool setupActive = false
+var float triggerHigh = na
+var float InvalidationLow = na
+
+if fakeoutDown
+    setupActive := true
+    triggerHigh := high[1]       // Buy stop trigger at Inside Bar High
+    InvalidationLow := low       // Stop Loss at the swing low of the liquidity purge
+
+// --- Order Execution Engine ---
+// Condition to clear setup if price drops past our invalidation before triggering
+if setupActive and (low < InvalidationLow)
+    setupActive := false
+
+// Entry Condition: Price crosses back above the Inside Bar High
+if setupActive and (strategy.position_size == 0)
+    if ta.crossover(high, triggerHigh)
+        risk = triggerHigh - InvalidationLow
+        takeProfit = triggerHigh + (risk * rrRatio)
+
+        // Execute the Long Position
+        strategy.entry("Bullish Reversal", strategy.long, stop=triggerHigh)
+        strategy.exit("Exit Long", "Bullish Reversal", stop=InvalidationLow, limit=takeProfit)
+
+        // Reset state
+        setupActive := false
+
+// --- Chart Visuals ---
+plotshape(fakeoutDown, title="Liquidity Swept", style=shape.xcross, location=location.belowbar, color=color.orange, size=size.small)
+plot(strategy.position_size > 0 ? InvalidationLow : na, title="Active Stop Loss", color=color.red, style=plot.style_linebr)
+plot(strategy.position_size > 0 ? triggerHigh + ((triggerHigh - InvalidationLow) * rrRatio) : na, title="Active Take Profit", color=color.green, style=plot.style_linebr)
